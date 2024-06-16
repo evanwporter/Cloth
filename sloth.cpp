@@ -99,6 +99,60 @@ py::array vector_to_numpy(const std::vector<T>& vec) {
     return py::array(buf_info);
 }
 
+template <typename T>
+MatrixXdRowMajor load_csv(const std::string &fname, const std::string &path, const bool quiet=true)
+{
+    // Modifjed from:
+    // https://github.com/evanwporter/CAT/blob/main/DataHandler/dh.cpp
+    
+    std::vector<T> values;
+
+    std::ifstream indata(path + fname + ".csv");
+    if (!indata.is_open()) {
+        throw std::runtime_error("Unable to open file: " + path + fname + ".csv");
+    }
+
+    std::string line;
+
+    // HEADERS
+    std::getline(indata, line);
+    std::stringstream lineStream(line);
+    std::vector<std::string> headers;
+    std::string header;
+    while (getline(lineStream, header, ',')) {
+        headers.push_back(header);
+    }
+
+    std::size_t data_width = headers.size();
+    unsigned int rows = 0;
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    // DATA
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+
+        for (unsigned int i = 0; i < data_width; ++i) {
+            std::getline(lineStream, cell, ',');
+            if (i > 0) { // Skip index for values
+                values.push_back(std::stod(cell)); // TODO: Accept other types
+            }
+        }
+        ++rows;
+    }
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    if (!quiet) {
+        std::cout << "Loaded " << fname << ". Time taken: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+                  << " microseconds." << std::endl;
+    }
+
+    return Map<MatrixXdRowMajor>(values.data(), rows, data_width - 1);
+};
+
 class DataFrame;
 class Series;
 
@@ -457,7 +511,6 @@ public:
     // DataFrameView::Proxy classes have to take into account the mask, while 
     //   DataFrame::Proxy classes do not
     // This is the main difference between the two.
-
     class LocProxy {
     private:
         DataFrameView& parent_;
