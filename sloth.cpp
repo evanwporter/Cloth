@@ -413,6 +413,7 @@ public:
             auto index_ = parent_.index_;
             auto columns_ = parent_.columns_;
 
+            //  Need to check if in mask
             if (index_->index_.find(idx) == index_->index_.end()) {
                 throw std::out_of_range("Key '" + idx + "' not found in the DataFrameView index.");
             }
