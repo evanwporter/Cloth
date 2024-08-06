@@ -11,6 +11,7 @@ ext_modules = [
             pybind11.get_include(),  # Path to pybind11 headers
             pybind11.get_include(user=True)
         ],
+        extra_compile_args=['-O2', '-DNDEBUG'],
         language='c++'
     ),
 ]

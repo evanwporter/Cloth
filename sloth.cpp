@@ -461,20 +461,20 @@ public:
     public:
         IlocProxy(DataFrameView& parent) : parent_(parent) {}
 
-    std::shared_ptr<Series> get(int arg) const {
-        auto& values_ = parent_.values_;
-        auto& columns_ = parent_.columns_;
+        std::shared_ptr<Series> get(int arg) const {
+            auto& values_ = parent_.values_;
+            auto& columns_ = parent_.columns_;
 
-        if (arg < 0 || arg >= parent_.mask_->length()) {
-            throw std::out_of_range("Index out of range");
+            if (arg < 0 || arg >= parent_.mask_->length()) {
+                throw std::out_of_range("Index out of range");
+            }
+
+            int actual_row = parent_.mask_->start + arg * parent_.mask_->step;
+            Eigen::VectorXd row_values = values_.row(actual_row);
+
+            auto series_index = std::make_shared<ColumnIndex>(*columns_);
+            return std::make_shared<Series>(std::move(row_values), std::move(series_index));
         }
-
-        int actual_row = parent_.mask_->start + arg * parent_.mask_->step;
-        Eigen::VectorXd row_values = values_.row(actual_row);
-
-        auto series_index = std::make_shared<ColumnIndex>(*columns_);
-        return std::make_shared<Series>(std::move(row_values), std::move(series_index));
-    }
 
 
         std::shared_ptr<DataFrameView> get(const slice<int>& arg) const {
