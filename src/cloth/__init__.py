@@ -1,1 +1,1 @@
-from .cloth import slice, ObjectIndex, ColumnIndex, Series
+from .cloth import slice, ObjectIndex, ColumnIndex, Series, DataFrame

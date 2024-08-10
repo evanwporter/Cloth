@@ -258,13 +258,11 @@ public:
     // const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const override {
     const Eigen::VectorXd& values() const override {
         
-        Eigen::VectorXd ret = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
+        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
             values_.data() + mask_->start, 
             mask_->length(), 
             Eigen::Stride<Eigen::Dynamic, 1>(mask_->step, 1)
         );
-
-        return ret;
     }
 
     // const ObjectIndex& index() const override {
@@ -283,7 +281,7 @@ Series::view Series::IlocProxy::operator[](const nb::slice& nbSlice) const {
     return Series::view(parent, combined_mask);
 };
 
-class DataFrame : public std::enable_shared_from_this<DataFrame> {
+class DataFrame {
 public:
     MatrixXdRowMajor values_;
     std::shared_ptr<ObjectIndex> index_;
@@ -310,6 +308,8 @@ public:
                 values_(i, j) = nb::cast<double>(row[j]);
             }
         }
+
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1);
     }
 
     DataFrame(nb::ndarray<> values, nb::list index, nb::list columns)
@@ -318,39 +318,33 @@ public:
         Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
         Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
         values_ = Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols);
+    
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1);
     }
 
-    // DataFrame(nb::ndarray<double> values, nb::ndarray<nb::object> index, nb::ndarray<nb::object> columns) {
-    //     // Map the NumPy array to an Eigen MatrixXd directly
-    //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
-    //     Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
-    //     values_ = Eigen::Map<MatrixXdRowMajor>(values.data(), rows, cols);
+    class view;
 
-    //     // Process index array
-    //     std::vector<std::string> index_keys;
-    //     auto index_list = index.cast<nb::list>();
-    //     for (nb::ssize_t i = 0; i < index_list.size(); ++i) {
-    //         index_keys.push_back(nb::cast<std::string>(index_list[i]));
-    //     }
+    // Corrected method declaration and definition
+    class IlocProxy {
+    private:
+        const DataFrame& parent;
 
-    //     // Process columns array
-    //     std::vector<std::string> column_keys;
-    //     auto columns_list = columns.cast<nb::list>();
-    //     for (nb::ssize_t i = 0; i < columns_list.size(); ++i) {
-    //         column_keys.push_back(nb::cast<std::string>(columns_list[i]));
-    //     }
+    public:
+        IlocProxy(const DataFrame& parent) : parent(parent) {}
 
-    //     // Create ObjectIndex and ColumnIndex using the processed keys
-    //     index_ = std::make_shared<ObjectIndex>(std::move(index_keys));
-    //     columns_ = std::make_shared<ColumnIndex>(std::move(column_keys));
-    // }
+        view operator[](const nb::slice& nbSlice) const;
+    };
+
+    IlocProxy iloc() {
+        return IlocProxy(*this);
+    }
 
     Eigen::Index rows() const {
         return mask_->length();
     }
 
     Eigen::Index cols() const {
-        return values().cols();
+        return values_.cols();
     }
 
     virtual const MatrixXdRowMajor& values() const {
@@ -366,13 +360,45 @@ public:
         oss << "Columns: " << cols() << ", Rows: " << rows() << "\nValues:\n";
         for (Eigen::Index i = 0; i < rows(); ++i) {
             for (Eigen::Index j = 0; j < cols(); ++j) {
-                oss << values()(i, j) << " ";
+                oss << values_(i, j) << " ";
             }
             oss << "\n";
         }
+        // oss << values_ << " " << rows() << values_.rows() << " " << mask_->start << " " << mask_->stop << " " << mask_->step;// << " " << cols();
         return oss.str();
     }
 };
+
+class DataFrame::view : public DataFrame {
+public:
+    std::shared_ptr<slice<Eigen::Index>> mask_;
+
+    view(const DataFrame& parent, std::shared_ptr<slice<Eigen::Index>> mask)
+        : DataFrame(parent), mask_(std::move(mask)) {
+        // Re-initialize indices to reflect the mask
+        this->index_ = parent.index_->fast_init(mask_);
+    }
+
+    const MatrixXdRowMajor& values() const override {
+        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
+            values_.data() + mask_->start, 
+            mask_->length(), 
+            Eigen::Stride<Eigen::Dynamic, 1>(mask_->step, 1)
+        );    
+    }
+
+    const ObjectIndex& index() const override {
+        return *index_;
+    }
+};
+
+DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const {
+    auto [start, stop, step, slice_length] = nbSlice.compute(parent.rows());
+    auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step), parent.rows());
+    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, *overlay));
+    return DataFrame::view(parent, combined_mask);
+}
+
 
 NB_MODULE(cloth, m) {
     nb::class_<slice<Eigen::Index>>(m, "slice")
@@ -413,8 +439,14 @@ NB_MODULE(cloth, m) {
         .def("values", &Series::view::values)
         .def("index", &Series::view::index);
 
+    nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
+        .def("__getitem__", [](const DataFrame::IlocProxy &self, const nb::slice &nbSlice) {
+            return self[nbSlice];
+        }, nb::is_operator());
+
     nb::class_<DataFrame>(m, "DataFrame")
         .def("__repr__", &DataFrame::repr)
         .def(nb::init<nb::list, nb::list, nb::list>())
-        .def(nb::init<nb::ndarray<>, nb::list, nb::list>());
+        .def(nb::init<nb::ndarray<>, nb::list, nb::list>())
+        .def_prop_ro("iloc", &DataFrame::iloc);
 }
