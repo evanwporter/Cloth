@@ -69,6 +69,20 @@ slice<T> combine_slices(const slice<T>& mask, const slice<T>& overlay) { //, Eig
     return slice<T>(start, stop, step);
 }
 
+// template <typename T = double>
+// std::vector<T> ndarray2vec(nb::ndarray<> arr) {
+//     if (arr.ndim() != 1 || arr.dtype() != nb::dtype<T>()) {
+//         throw std::invalid_argument("Input should be a 1D array of doubles");
+//     }
+
+//     std::vector<T> vec(arr.size());
+
+//     // Copy data from the NumPy array to the std::vector
+//     std::memcpy(vec.data(), arr.data(), arr.size() * sizeof(T));
+
+//     return vec;
+// }
+
 class Index_ {
 public:
     virtual ~Index_() = default;
@@ -82,7 +96,7 @@ public:
 
 
     ObjectIndex(robin_hood::unordered_map<std::string, int> index, std::vector<std::string> keys)
-        : index_(index), keys_(keys), mask_(std::make_shared<slice<Eigen::Index>>(0, static_cast<int>(length()), 1)) {}
+        : index_(index), keys_(keys), mask_(std::make_shared<slice<Eigen::Index>>(0, static_cast<int>(keys.size()), 1)) {}
 
     ObjectIndex(std::vector<std::string> keys)
         : keys_(keys)
@@ -282,63 +296,53 @@ public:
           columns_(std::move(columns)), 
           mask_(std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1)) {}
 
-    // DataFrame(nb::list values, nb::list index, nb::list columns) {
-    //     Eigen::Index rows = static_cast<Eigen::Index>(values.size());
-    //     Eigen::Index cols = static_cast<Eigen::Index>(nb::len(values[0]));
-    //     values_ = MatrixXdRowMajor(rows, cols);
-    //     for (Eigen::Index i = 0; i < rows; ++i) {
-    //         auto row = nb::cast<nb::list>(values[i]);
-    //         for (Eigen::Index j = 0; j < cols; ++j) {
-    //             values_(i, j) = nb::cast<double>(row[j]);
-    //         }
-    //     }
-    //     robin_hood::unordered_map<std::string, int> index_map;
-    //     std::vector<std::string> index_keys;
-    //     for (nb::ssize_t i = 0; i < index.size(); ++i) {
-    //         std::string key = nb::cast<std::string>(index[i]);
-    //         index_map[key] = static_cast<Eigen::Index>(i);
-    //         index_keys.push_back(key);
-    //     }
-    //     robin_hood::unordered_map<std::string, int> column_map;
-    //     std::vector<std::string> column_keys;
-    //     for (nb::ssize_t i = 0; i < columns.size(); ++i) {
-    //         std::string key = nb::cast<std::string>(columns[i]);
-    //         column_map[key] = static_cast<Eigen::Index>(i);
-    //         column_keys.push_back(key);
-    //     }
-    //     index_ = std::make_shared<ObjectIndex>(std::move(index_map), std::move(index_keys));
-    //     columns_ = std::make_shared<ColumnIndex>(std::move(column_map), std::move(column_keys));
-    // }
+    DataFrame(nb::list values, nb::list index, nb::list columns)
+        : index_(std::make_shared<ObjectIndex>(index)),
+          columns_(std::make_shared<ColumnIndex>(columns)) {
+        Eigen::Index rows = static_cast<Eigen::Index>(values.size());
+        Eigen::Index cols = static_cast<Eigen::Index>(nb::cast<nb::list>(values[0]).size());
+
+        values_ = MatrixXdRowMajor(rows, cols);
+        for (Eigen::Index i = 0; i < rows; ++i) {
+            auto row = nb::cast<nb::list>(values[i]);
+            // Check that size row == cols
+            for (Eigen::Index j = 0; j < cols; ++j) {
+                values_(i, j) = nb::cast<double>(row[j]);
+            }
+        }
+    }
+
+    DataFrame(nb::ndarray<> values, nb::list index, nb::list columns)
+        : index_(std::make_shared<ObjectIndex>(index)),
+          columns_(std::make_shared<ColumnIndex>(columns)) {
+        Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
+        Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
+        values_ = Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols);
+    }
 
     // DataFrame(nb::ndarray<double> values, nb::ndarray<nb::object> index, nb::ndarray<nb::object> columns) {
-        
-    //     auto buf = values.view();
-    //     Eigen::Index rows = static_cast<Eigen::Index>(buf.shape(0));
-    //     Eigen::Index cols = static_cast<Eigen::Index>(buf.shape(1));
-    //     values_ = MatrixXdRowMajor(rows, cols);
-    //     for (Eigen::Index i = 0; i < rows; ++i) {
-    //         for (Eigen::Index j = 0; j < cols; ++j) {
-    //             values_(i, j) = buf(i, j);
-    //         }
-    //     }
-    //     robin_hood::unordered_map<std::string, int> index_map;
+    //     // Map the NumPy array to an Eigen MatrixXd directly
+    //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
+    //     Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
+    //     values_ = Eigen::Map<MatrixXdRowMajor>(values.data(), rows, cols);
+
+    //     // Process index array
     //     std::vector<std::string> index_keys;
-    //     auto index_array = index.cast<nb::list>();
-    //     auto columns_array = columns.cast<nb::list>();
-    //     for (nb::ssize_t i = 0; i < index_array.size(); ++i) {
-    //         std::string key = nb::cast<std::string>(index_array[i]);
-    //         index_map[key] = static_cast<Eigen::Index>(i);
-    //         index_keys.push_back(key);
+    //     auto index_list = index.cast<nb::list>();
+    //     for (nb::ssize_t i = 0; i < index_list.size(); ++i) {
+    //         index_keys.push_back(nb::cast<std::string>(index_list[i]));
     //     }
-    //     robin_hood::unordered_map<std::string, int> column_map;
+
+    //     // Process columns array
     //     std::vector<std::string> column_keys;
-    //     for (nb::ssize_t i = 0; i < columns_array.size(); ++i) {
-    //         std::string key = nb::cast<std::string>(columns_array[i]);
-    //         column_map[key] = static_cast<Eigen::Index>(i);
-    //         column_keys.push_back(key);
+    //     auto columns_list = columns.cast<nb::list>();
+    //     for (nb::ssize_t i = 0; i < columns_list.size(); ++i) {
+    //         column_keys.push_back(nb::cast<std::string>(columns_list[i]));
     //     }
-    //     index_ = std::make_shared<ObjectIndex>(std::move(index_map), std::move(index_keys));
-    //     columns_ = std::make_shared<ColumnIndex>(std::move(column_map), std::move(column_keys));
+
+    //     // Create ObjectIndex and ColumnIndex using the processed keys
+    //     index_ = std::make_shared<ObjectIndex>(std::move(index_keys));
+    //     columns_ = std::make_shared<ColumnIndex>(std::move(column_keys));
     // }
 
     Eigen::Index rows() const {
@@ -410,5 +414,7 @@ NB_MODULE(cloth, m) {
         .def("index", &Series::view::index);
 
     nb::class_<DataFrame>(m, "DataFrame")
-        .def("__repr__", &DataFrame::repr);
+        .def("__repr__", &DataFrame::repr)
+        .def(nb::init<nb::list, nb::list, nb::list>())
+        .def(nb::init<nb::ndarray<>, nb::list, nb::list>());
 }
