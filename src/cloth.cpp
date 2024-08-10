@@ -70,28 +70,19 @@ slice<T> combine_slices(const slice<T>& mask, const slice<T>& overlay) { //, Eig
 }
 
 class Index_ {
-protected:
-    std::shared_ptr<slice<Eigen::Index>> mask_;
-
 public:
     virtual ~Index_() = default;
-
-    Index_(): mask_(
-        std::make_shared<slice<Eigen::Index>>(0, static_cast<int>(length()), 1)
-    ) {}
-
-    virtual Eigen::Index length() const {
-        return mask_->length();
-    }
 };
 
 class ObjectIndex : public Index_ {
 public:
     robin_hood::unordered_map<std::string, int> index_;
     std::vector<std::string> keys_;
+    std::shared_ptr<slice<Eigen::Index>> mask_;
+
 
     ObjectIndex(robin_hood::unordered_map<std::string, int> index, std::vector<std::string> keys)
-        : Index_(), index_(index), keys_(keys) {}
+        : index_(index), keys_(keys), mask_(std::make_shared<slice<Eigen::Index>>(0, static_cast<int>(length()), 1)) {}
 
     ObjectIndex(std::vector<std::string> keys)
         : keys_(keys)
@@ -117,11 +108,15 @@ public:
         return new_index;
     }
 
+    virtual Eigen::Index length() const {
+        return mask_->length();
+    }
+
     std::vector<std::string> keys() const {
         std::vector<std::string> result;
         // result.reserve(length());
         for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
-            result.push_back(keys_[i]);
+            // result.push_back(keys_[i]);
             std::cout << keys_[i];
         }
         return result;
