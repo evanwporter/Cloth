@@ -1,0 +1,8 @@
+{
+  "source_dir": "C:\\Users\\evanw\\Cloth",
+  "build_dir": "C:\\Users\\evanw\\Cloth\\build\\cp312-abi3-win_amd64",
+  "cmake_path": "C:\\Program Files\\CMake\\bin\\cmake.EXE",
+  "skbuild_path": "C:\\Users\\evanw\\miniconda3\\Lib\\site-packages\\scikit_build_core",
+  "skbuild_version": "0.10.1",
+  "python_executable": "C:\\Users\\evanw\\miniconda3\\python.exe"
+}

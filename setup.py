@@ -1,5 +1,9 @@
 from setuptools import setup, Extension
-import pybind11
+import os
+import nanobind
+
+# Define nanobind include directory
+nanobind_include_dir = os.path.join(os.path.dirname(nanobind.__file__), 'include')
 
 # Define extension module
 ext_modules = [
@@ -8,10 +12,9 @@ ext_modules = [
         ['sloth.cpp'],
         include_dirs=[
             './lib/Eigen',  # Path to local Eigen directory
-            pybind11.get_include(),  # Path to pybind11 headers
-            pybind11.get_include(user=True)
+            nanobind_include_dir,  # Path to nanobind headers
         ],
-        extra_compile_args=['-O2', '-DNDEBUG'],
+        extra_compile_args=['/O2', '/DNDEBUG', '-std=c++22'],
         language='c++'
     ),
 ]
@@ -23,6 +26,6 @@ setup(
     author='Evan Porter',
     author_email='evanwporter@gmail.com',
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.5'],
+    install_requires=['nanobind>=1.0'],  # Ensure nanobind is installed
     zip_safe=False,
 )

@@ -1,0 +1,5 @@
+C:/Users/evanw/Cloth/build/cp312-abi3-win_amd64/CMakeFiles/cloth.dir
+C:/Users/evanw/Cloth/build/cp312-abi3-win_amd64/CMakeFiles/nanobind-static-abi3.dir
+C:/Users/evanw/Cloth/build/cp312-abi3-win_amd64/CMakeFiles/INSTALL.dir
+C:/Users/evanw/Cloth/build/cp312-abi3-win_amd64/CMakeFiles/ALL_BUILD.dir
+C:/Users/evanw/Cloth/build/cp312-abi3-win_amd64/CMakeFiles/ZERO_CHECK.dir
