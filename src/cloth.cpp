@@ -646,16 +646,18 @@ DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const
 DataFrame::view DataFrame::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
     overlay.normalize(parent.rows());
     auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
+    LOG("Combined Mask " << combined_mask)
     return DataFrame::view(parent, combined_mask);
 }
 
-// DataFrame::view DataFrame::head(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
-// }
+DataFrame::view DataFrame::head(Eigen::Index n) const {
+    LOG("AT HEAD");
+    return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
+}
 
-// DataFrame::view DataFrame::tail(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
-// }
+DataFrame::view DataFrame::tail(Eigen::Index n) const {
+    return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
+}
 
 
 NB_MODULE(cloth, m) {
@@ -729,7 +731,9 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("values", &DataFrame::values)
         .def_prop_ro("iloc", &DataFrame::iloc)
         .def("__getitem__", &DataFrame::operator[], nb::is_operator())
-        .def("__getattr__", &DataFrame::operator[], nb::is_operator());
+        .def("__getattr__", &DataFrame::operator[], nb::is_operator())
+        .def("head", &DataFrame::head)
+        .def("tail", &DataFrame::tail);
 
 
     nb::class_<DataFrame::view, DataFrame>(m, "DataFrameView")
