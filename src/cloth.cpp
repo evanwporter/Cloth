@@ -467,6 +467,8 @@ public:
 
         view operator[](const nb::slice& nbSlice) const;
 
+        view operator[](slice<Eigen::Index>& overlay) const;
+
         Series operator[](Eigen::Index idx) const {
             if (idx < 0 || idx >= parent.rows()) {
                 throw std::out_of_range("Index out of range");
@@ -525,6 +527,9 @@ public:
         return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
     }
 
+    view head(Eigen::Index n) const;
+
+    view tail(Eigen::Index n) const;
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
         std::vector<std::string> rowNames = df.index_->keys();
@@ -575,7 +580,6 @@ public:
 
         return os;
     }
-
 
     std::string to_string() const {
         std::ostringstream oss;
@@ -638,6 +642,20 @@ DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const
     auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, *overlay));
     return DataFrame::view(parent, combined_mask);
 }
+
+DataFrame::view DataFrame::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
+    overlay.normalize(parent.rows());
+    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
+    return DataFrame::view(parent, combined_mask);
+}
+
+// DataFrame::view DataFrame::head(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
+// }
+
+// DataFrame::view DataFrame::tail(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
+// }
 
 
 NB_MODULE(cloth, m) {
