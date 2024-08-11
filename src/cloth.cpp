@@ -521,6 +521,10 @@ public:
         return *index_;
     }
 
+    Series operator[](const std::string& colName) const {
+        return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
+    }
+
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
         std::vector<std::string> rowNames = df.index_->keys();
@@ -614,6 +618,7 @@ public:
         //     stride
         // );
         // std::cout << ma;
+
         return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
             values_->data() + start_row * cols, // Pointer to the starting element
             row_length,
@@ -704,7 +709,10 @@ NB_MODULE(cloth, m) {
         .def("__repr__", &DataFrame::to_string)
         .def(nb::init<nb::ndarray<>, nb::list, nb::list>())
         .def_prop_ro("values", &DataFrame::values)
-        .def_prop_ro("iloc", &DataFrame::iloc);
+        .def_prop_ro("iloc", &DataFrame::iloc)
+        .def("__getitem__", &DataFrame::operator[], nb::is_operator())
+        .def("__getattr__", &DataFrame::operator[], nb::is_operator());
+
 
     nb::class_<DataFrame::view, DataFrame>(m, "DataFrameView")
         .def(nb::init<const DataFrame&, std::shared_ptr<slice<Eigen::Index>>>())
