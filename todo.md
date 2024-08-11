@@ -6,10 +6,27 @@
     * Add/remove `const` from places (I think I've been overly liberal here)
 * Create util section
 * Give C++ functions better names
-* Add expanded # indexing functions
-    * ~~Column index that returns series for DF (operator [])~~
-        * ~~Converts to `__getattr___` & `__getitem___` in python~~
-    * Loc Proxy for both
+* Indexing Function
+    * DataFrame
+        * Integer Row Indexing (iloc)
+            * ~~Slice~~
+            * ~~Int~~
+        * Keyword Row Indexing (loc)
+            * Slice
+            * ~~Keyword~~
+        * Column Indexing
+            * `__getitem__`
+                * Slice
+                * ~~Keyword~~
+            * ~~`__getattr__`~~
+                * ~~Keyword~~
+    * Series
+        * Integer Row Indexing (iloc)
+            * ~~Slice~~
+            * ~~Int~~
+        * Keyword Row Indexing (loc)
+            * Slice
+            * Keyword
 * Better options for combing slice with int
 * More Indices
     * RangeIndex
