@@ -324,7 +324,7 @@ public:
         }
 
         // std::shared_ptr<SeriesView> operator[](Eigen::Index idx) const {
-        //     auto combined_slice = combine_slices(*parent.mask_, slice<Eigen::Index>(idx, idx + 1, 1), parent.values_.size());
+        //     auto combined_slice = combine_slices(*parent.mask_, slice<Eigen::Index>(idx, idx + 1, 1), parent.values_->size());
         //     return parent.create_view(std::make_shared<slice<Eigen::Index>>(combined_slice));
         // }
     };
@@ -356,9 +356,7 @@ public:
 
     // const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const override {
     const Eigen::VectorXd& values() const override {
-        
-        std::cout << "MASK " << *mask_ << "\n";
-        
+                
         return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
             values_->data() + mask_->start, 
             mask_->length(), 
@@ -370,31 +368,24 @@ public:
     //     return mask_->length();
     // }
 
-    std::string to_string() const {
-        std::ostringstream oss;
-        oss << *this;
-        return oss.str();
-    }
+    // std::string to_string() const {
+    //     std::ostringstream oss;
+    //     oss << *this;
+    //     return oss.str();
+    // }
 
-    friend std::ostream& operator<<(std::ostream& os, const Series::view& view) {
-        // Avoid directly invoking methods that might cause recursion
-        try {
-            // Print only essential information initially
-            os << "Series::view with length: " << view.mask_->length() << "\n";
+    // friend std::ostream& operator<<(std::ostream& os, const Series::view& view) {
+    //     try {
+    //         os << "Series::view with length: " << view.mask_->length() << "\n";
+    //         os << "Mask start: " << view.mask_->start << ", stop: " << view.mask_->stop << "\n";
+    //         // os << "Values: " << view.values() << "\n"; // Potentially recursive
+    //         os << "Index: " << *view.index_ << "\n"; // Ensure this does not cause recursion
 
-            // Output the mask, but ensure no recursive or circular dependencies are invoked
-            os << "Mask start: " << view.mask_->start << ", stop: " << view.mask_->stop << "\n";
-
-            // Avoid calling any overridden methods directly
-            // os << "Values: " << view.values() << "\n"; // Potentially recursive
-            os << "Index: " << *view.index_ << "\n"; // Ensure this does not cause recursion
-
-        } catch (const std::exception &e) {
-            os << "Error during stream output: " << e.what();
-        }
-
-        return os;
-    }
+    //     } catch (const std::exception &e) {
+    //         os << "Error during stream output: " << e.what();
+    //     }
+    //     return os;
+    // }
 
 
 
@@ -419,43 +410,49 @@ Series::view Series::IlocProxy::operator[](const nb::slice& nbSlice) const {
 
 class DataFrame {
 public:
-    MatrixXdRowMajor values_;
+    std::shared_ptr<MatrixXdRowMajor> values_;
     std::shared_ptr<ObjectIndex> index_;
     std::shared_ptr<ColumnIndex> columns_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
 
-    DataFrame(MatrixXdRowMajor values, std::shared_ptr<ObjectIndex> index, std::shared_ptr<ColumnIndex> columns)
+    DataFrame(const DataFrame& other,  std::shared_ptr<slice<Eigen::Index>> mask)
+        : values_(other.values_),
+          index_(other.index_),
+          columns_(other.columns_),
+          mask_(mask) {}
+
+    DataFrame(std::shared_ptr<MatrixXdRowMajor> values, std::shared_ptr<ObjectIndex> index, std::shared_ptr<ColumnIndex> columns)
         : values_(std::move(values)), 
           index_(std::move(index)), 
           columns_(std::move(columns)), 
-          mask_(std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1)) {}
+          mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
 
-    DataFrame(nb::list values, nb::list index, nb::list columns)
-        : index_(std::make_shared<ObjectIndex>(index)),
-          columns_(std::make_shared<ColumnIndex>(columns)) {
-        Eigen::Index rows = static_cast<Eigen::Index>(values.size());
-        Eigen::Index cols = static_cast<Eigen::Index>(nb::cast<nb::list>(values[0]).size());
+    // DataFrame(nb::list values, nb::list index, nb::list columns)
+    //     : index_(std::make_shared<ObjectIndex>(index)),
+    //       columns_(std::make_shared<ColumnIndex>(columns)) {
+    //     Eigen::Index rows = static_cast<Eigen::Index>(values.size());
+    //     Eigen::Index cols = static_cast<Eigen::Index>(nb::cast<nb::list>(values[0]).size());
 
-        values_ = MatrixXdRowMajor(rows, cols);
-        for (Eigen::Index i = 0; i < rows; ++i) {
-            auto row = nb::cast<nb::list>(values[i]);
-            // Check that size row == cols
-            for (Eigen::Index j = 0; j < cols; ++j) {
-                values_(i, j) = nb::cast<double>(row[j]);
-            }
-        }
+    //     values_ = MatrixXdRowMajor(rows, cols);
+    //     for (Eigen::Index i = 0; i < rows; ++i) {
+    //         auto row = nb::cast<nb::list>(values[i]);
+    //         // Check that size row == cols
+    //         for (Eigen::Index j = 0; j < cols; ++j) {
+    //             values_(i, j) = nb::cast<double>(row[j]);
+    //         }
+    //     } 
 
-        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1);
-    }
+    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
+    // }
 
     DataFrame(nb::ndarray<> values, nb::list index, nb::list columns)
         : index_(std::make_shared<ObjectIndex>(index)),
           columns_(std::make_shared<ColumnIndex>(columns)) {
         Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
         Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
-        values_ = Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols);
+        values_ = std::make_shared<MatrixXdRowMajor>(Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols));
     
-        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_.rows(), 1);
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
 
     class view;
@@ -474,7 +471,7 @@ public:
                 throw std::out_of_range("Index out of range");
             }
             // Extract the correct row using the mask and the requested index
-            auto row = std::make_shared<Eigen::VectorXd>(parent.values_.row(parent.mask_->start + idx * parent.mask_->step).transpose());
+            auto row = std::make_shared<Eigen::VectorXd>(parent.values_->row(parent.mask_->start + idx * parent.mask_->step).transpose());
             return Series(row, parent.columns_);
         }
     };
@@ -506,22 +503,25 @@ public:
     }
 
     Eigen::Index cols() const {
-        return values_.cols();
+        return values_->cols();
     }
 
-    virtual const MatrixXdRowMajor& values() const {
-        return values_;
+    virtual Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> values() {
+        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(values_->data(), values_->rows(), values_->cols());
     }
+
 
     virtual const ObjectIndex& index() const {
         return *index_;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
-        os << "DataFrame\nRows: " << df.values_.rows() << ", Columns: " << df.values_.cols() << "\nValues:\n";
-        for (Eigen::Index i = 0; i < df.values_.rows(); ++i) {
-            for (Eigen::Index j = 0; j < df.values_.cols(); ++j) {
-                os << df.values_(i, j) << " ";
+        os << "DataFrame\nRows: " << df.rows() << ", Columns: " << df.cols() << "\nValues:\n";
+
+        // Iterate over the masked rows
+        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
+            for (Eigen::Index j = 0; j < df.values_->cols(); ++j) {
+                os << df.values_->operator()(i, j) << " ";
             }
             os << "\n";
         }
@@ -537,30 +537,54 @@ public:
 
 class DataFrame::view : public DataFrame {
 public:
+    std::shared_ptr<ObjectIndex> index_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
 
-    view(const DataFrame& parent, std::shared_ptr<slice<Eigen::Index>> mask)
-        : DataFrame(parent), mask_(std::move(mask)) {
+    DataFrame::view(const DataFrame& parent, std::shared_ptr<slice<Eigen::Index>> mask)
+        : DataFrame(parent, mask), mask_(std::move(mask)) {
         // Re-initialize indices to reflect the mask
         this->index_ = parent.index_->fast_init(mask_);
     }
 
-    const MatrixXdRowMajor& values() const override {
-        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
-            values_.data() + mask_->start, 
-            mask_->length(), 
-            Eigen::Stride<Eigen::Dynamic, 1>(mask_->step, 1)
-        );    
+    Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> values() override {
+        LOG("Returning masked matrix from DataFrame::view");
+
+        Eigen::Index row_stride = mask_->step;
+        Eigen::Index start_row = mask_->start;
+        Eigen::Index row_length = mask_->length();
+        Eigen::Index cols = values_->cols();
+
+        LOG("start_row=" << start_row << ", row_length=" << row_length << ", row_stride=" << row_stride << ", cols=" << cols);
+
+        // // Check if the calculated row length is zero
+        // if (row_length == 0 || cols == 0) {
+        //     LOG("Returning an empty array due to zero row length or column count");
+        //     return Eigen::Map<MatrixXdRowMajor>(nullptr, 0, 0);
+        // }
+
+        // auto ma = Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
+        //     values_->data() + start_row * cols, // Pointer to the starting element
+        //     row_length,
+        //     cols,
+        //     stride
+        // );
+        // std::cout << ma;
+        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
+            values_->data() + start_row * cols, // Pointer to the starting element
+            row_length,
+            cols,
+            Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(mask_->step * cols, 1)
+        );
     }
 
-    const ObjectIndex& index() const override {
-        return *index_;
-    }
+    // const ObjectIndex& index() const override {
+    //     return *index_;
+    // }
 };
 
 DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const {
     auto [start, stop, step, slice_length] = nbSlice.compute(parent.rows());
-    auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step), parent.rows());
+    auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<Eigen::Index>(start), static_cast<Eigen::Index>(stop), static_cast<Eigen::Index>(step), parent.rows());
     auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, *overlay));
     return DataFrame::view(parent, combined_mask);
 }
@@ -617,8 +641,8 @@ NB_MODULE(cloth, m) {
         .def(nb::init<const Series&, std::shared_ptr<slice<Eigen::Index>>>())
         .def_prop_ro("mask", [](const Series::view &view) {
             return *view.mask_;
-        })
-        .def("__repr__", &Series::view::to_string);
+        });
+        // .def("__repr__", &Series::view::to_string);
 
         // .def("values", &Series::view::values)
         // .def("index", &Series::view::index);
@@ -633,7 +657,13 @@ NB_MODULE(cloth, m) {
 
     nb::class_<DataFrame>(m, "DataFrame")
         .def("__repr__", &DataFrame::to_string)
-        .def(nb::init<nb::list, nb::list, nb::list>())
         .def(nb::init<nb::ndarray<>, nb::list, nb::list>())
+        .def_prop_ro("values", &DataFrame::values)
         .def_prop_ro("iloc", &DataFrame::iloc);
+
+    nb::class_<DataFrame::view, DataFrame>(m, "DataFrameView")
+        .def(nb::init<const DataFrame&, std::shared_ptr<slice<Eigen::Index>>>())
+        .def_prop_ro("mask", [](const DataFrame::view &view) {
+            return *view.mask_;
+        });
 }
