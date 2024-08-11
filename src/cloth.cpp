@@ -307,6 +307,9 @@ public:
 
     class view;
 
+    view head(Eigen::Index n) const;
+
+    view tail(Eigen::Index n) const;
 
     class IlocProxy {
     private:
@@ -316,6 +319,8 @@ public:
         IlocProxy(const Series& parent) : parent(parent) {}
 
         view operator[](const nb::slice& nbSlice) const; // Declaration only
+
+        view operator[](slice<Eigen::Index>& overlay) const;
 
         double operator[](Eigen::Index idx) const {
             if (idx < 0 || idx >= parent.size()) {
@@ -408,6 +413,20 @@ Series::view Series::IlocProxy::operator[](const nb::slice& nbSlice) const {
     std::cout << "Combined Mask " << combined_mask->start << " " << combined_mask->stop << "\n";
     return Series::view(parent, combined_mask);
 };
+
+Series::view Series::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
+    overlay.normalize(parent.values().size());
+    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
+    return Series::view(parent, combined_mask);
+}
+
+// Series::view Series::head(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
+// }
+
+// Series::view Series::tail(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
+// }
 
 class DataFrame {
 public:
@@ -646,7 +665,6 @@ DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const
 DataFrame::view DataFrame::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
     overlay.normalize(parent.rows());
     auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
-    LOG("Combined Mask " << combined_mask)
     return DataFrame::view(parent, combined_mask);
 }
 
@@ -706,6 +724,8 @@ NB_MODULE(cloth, m) {
             return *series.mask_;
         })
         .def_prop_ro("iloc", &Series::iloc);
+        // .def("head", &Series::head)
+        // .def("tail", &Series::tail);
 
     nb::class_<Series::view, Series>(m, "SeriesView")
         .def(nb::init<const Series&, std::shared_ptr<slice<Eigen::Index>>>())
