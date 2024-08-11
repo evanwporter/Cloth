@@ -1,4 +1,4 @@
-build/
+# build/
 html/
 latex/
 xml/
@@ -6,3 +6,6 @@ xml/
 
 *.pyd
 .ipynb_checkpoints/
+
+build/
+CMakeFiles/

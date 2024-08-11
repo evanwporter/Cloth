@@ -1,47 +1,111 @@
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⡶⢶⣦⣤⣀⠀⠀⠀⠀⣠⣶⣾⠿⠷⣶⣦⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣯⠀⠀⢻⣯⠙⢷⣄⢠⣾⡿⠋⠁⠀⠀⠈⢻⡍⠙⢷⣦⡀⠀⠀⠀⢀⣴⣿⡿⠛⠙⢿⣷⣦⡀⣠⡾⠋⢹⣿⡿⠿⢶⣦⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⡿⠁⢻⣧⠀⢸⣿⡀⠈⣿⣿⣿⠁⠀⠀⠀⠀⠀⠀⣿⣧⡀⠻⣷⡀⠀⢰⣿⠟⠁⠀⠀⠀⠀⠹⣿⠻⣿⡁⢠⡿⠏⠀⢀⣼⣿⣧⡀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⡿⠁⠀⠈⣿⣇⣸⣿⠀⣸⣿⣿⠇⠀⠀⠀⠀⠀⠀⠀⣿⡌⢻⣦⣹⣇⢠⣿⡏⠀⠀⠀⠀⠀⠀⠀⢿⣆⠘⣿⣿⠃⣠⡾⠋⠁⠈⣿⣧⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⠇⠀⠀⠀⢸⣿⣿⣇⣰⣿⠿⣿⠀⠀⠀⠀⠀⠀⠀⠀⣿⢻⣶⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⢸⡛⣷⢺⡇⣰⠏⠀⠀⠀⠀⠘⣿⣧⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⡿⠀⠀⠀⠀⠈⠉⠙⢻⡟⠁⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⣿⡄⠙⠿⠃⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⢸⡿⠿⣿⡿⠃⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⡇⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⠀⣿⡀⠀⠀⠀⠀⠀⠀⠀⢹⡇⠀⠀⠀⢸⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠸⣧⠀⢻⣧⠀⠀⠀⠀⠀⠀⠀⠈⣿⡆⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠃⠀⠀⠀⠀⠀⠀⠀⢸⣷⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠘⣷⠀⠀⠀⠈⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡄⠘⣿⡀⠀⠀⠀⠀⠀⠀⠀⢹⣿⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⢿⡀⠀⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀⢹⣧⠀⠀⠀⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣇⢠⣿⡇⠀⠀⠀⠀⠀⠀⠀⠸⣿⡆
-// ⠀⠀⠀⠀⠀⢀⣠⣴⣶⣾⣿⣿⡿⣿⣷⣶⣄⣀⠀⠀⠀⠘⣧⠀⠘⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⢻⡄⠀⠀⢹⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣾⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇
-// ⠀⠀⠀⣠⣶⣿⡿⠛⠛⣽⠋⠀⠀⠀⠀⣩⡿⢿⣷⣄⠀⠀⠹⡇⠀⢻⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⢿⡆⠀⠈⣿⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇
-// ⠀⢀⣼⡿⢋⡵⠞⠉⠉⠁⠀⠀⠀⢰⣿⣿⡆⠀⠙⣿⣧⡀⠀⢻⡄⠘⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⡄⠀⢸⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿
-// ⢠⣿⣟⡴⠋⠀⠀⠀⠀⠀⠀⠀⣀⠈⠛⠿⠷⠶⠛⠛⢻⣿⣿⡿⠧⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣷⠀⠀⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢿⣧⠀⠀⠀⠀⠀⠀⠀⣿⣿
-// ⣸⣿⠟⠁⠀⠀⠀⠀⠀⣰⣾⣿⣿⠆⣰⣶⠀⠀⠀⠀⠀⣿⣿⣿⣦⡀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⡀⠀⢸⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢿⣧⠀⠀⠀⠀⠀⠀⣿⣿
-// ⣿⡏⢀⣴⣶⣿⣷⠀⠀⠙⠛⠋⣁⣴⡿⠃⠀⠀⠀⠀⢸⠇⠈⠙⢿⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⣤⡀⢹⣷⠾⠟⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣧⠀⠀⠀⠀⢀⣿⣿
-// ⣿⣇⡏⠀⠙⠿⢿⠀⠶⠶⠶⠿⠛⠋⠀⠀⠀⠀⠀⣠⠏⠀⠀⢀⣼⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢿⣷⣤⣷⠀⠀⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢻⣇⠀⠀⠀⢸⣿⡇
-// ⢹⣿⠀⠀⠀⢀⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⠞⠁⣀⣀⣴⠿⠋⠀⠀⠀⠀⠀⠀⠀⠀⣶⣆⠀⢸⡇⠈⠁⠀⠀⣸⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⡀⠀⠀⣸⣿⡇
-// ⠘⣿⣧⠀⣠⠟⠀⠀⠀⠀⠀⠀⠀⠀⣠⠴⠛⠁⠀⠘⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣈⣿⣿⣆⣸⡇⠀⠀⠀⢀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⢠⣿⣿⠁
-// ⠀⠘⣿⣷⣯⣀⠀⠀⠀⠀⣀⣤⠴⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠛⠻⠿⣿⡿⠁⠀⠀⠀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⠃⠀
-// ⠀⠀⠹⣿⣷⡉⠉⠛⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⡟⠀⠀
-// ⠀⠀⠀⠘⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⡿⠀⠀⠀
-// ⠀⠀⠀⠀⠘⢿⣿⣶⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⡿⠁⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⡿⠁⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠈⠿⣿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡟⠀⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⣿⣿⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⣿⠋⠀⠀⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⢿⣿⣿⣶⣦⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤⣶⣾⠿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠻⠿⣿⣿⣿⣷⣶⣤⣄⣀⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣤⣴⣶⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⡛⠛⠿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⢛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-
-
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/numpy.h>
+#include <nanobind/stl.h>
 #include <memory>
 #include <vector>
 #include <string>
 #include <sstream>
 #include <stdexcept>
 #include <numeric>
-
 #include <Eigen/Dense>
 #include "lib/robinhood.h"
 
-#include "util.h"
+namespace nb = nanobind;
+using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+template <typename T>
+struct slice {
+    T start, stop;
+    int step;
+
+    slice(T start_, T stop_, int step_) : start(start_), stop(stop_), step(step_) {
+        if (step == 0) throw std::invalid_argument("Step cannot be zero");
+    }
+
+    void normalize(Eigen::Index length) {
+        if (start < 0) start += length;
+        if (stop < 0) stop += length;
+        if (start < 0) start = 0;
+        if (stop > length) stop = length;
+    }
+
+    Eigen::Index length() const {
+        return (step > 0) ? (stop - start + step - 1) / step : (start - stop - step + 1) / (-step);
+    }
+    
+    T get_start() const { return start; }
+    T get_stop() const { return stop; }
+    int get_step() const { return step; }
+
+    std::string repr() const {
+        std::ostringstream oss;
+        oss << "slice(" << start << ", " << stop << ", " << step << ")";
+        return oss.str();
+    }
+};
+
+slice<int> combine_slices(const slice<int>& mask, const slice<int>& overlay, Eigen::Index length_mask) {
+    int start = mask.start + (overlay.start * mask.step);
+    int stop = mask.start + (overlay.stop * mask.step);
+    int step = mask.step * overlay.step;
+    return slice<int>(start, stop, step);
+}
+
+// Helper function to convert std::vector<T> to nb::ndarray
+template <typename T>
+nb::ndarray<T> vector_to_numpy(const std::vector<T>& vec) {
+    return nb::ndarray<T>(vec.size(), vec.data());
+}
+
+template <typename T>
+MatrixXdRowMajor load_csv(const std::string &fname, const std::string &path, const bool quiet=true) {
+    std::vector<T> values;
+
+    std::ifstream indata(path + fname + ".csv");
+    if (!indata.is_open()) {
+        throw std::runtime_error("Unable to open file: " + path + fname + ".csv");
+    }
+
+    std::string line;
+
+    // HEADERS
+    std::getline(indata, line);
+    std::stringstream lineStream(line);
+    std::vector<std::string> headers;
+    std::string header;
+    while (getline(lineStream, header, ',')) {
+        headers.push_back(header);
+    }
+
+    std::size_t data_width = headers.size();
+    unsigned int rows = 0;
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    // DATA
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+
+        for (unsigned int i = 0; i < data_width; ++i) {
+            std::getline(lineStream, cell, ',');
+            if (i > 0) { // Skip index for values
+                values.push_back(std::stod(cell)); // TODO: Accept other types
+            }
+        }
+        ++rows;
+    }
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    if (!quiet) {
+        std::cout << "Loaded " << fname << ". Time taken: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+                  << " microseconds." << std::endl;
+    }
+
+    return Eigen::Map<MatrixXdRowMajor>(values.data(), rows, data_width - 1);
+};
 
 class DataFrame;
 class Series;
@@ -198,10 +262,11 @@ public:
             auto combined_slice = combine_slices(*parent_.mask_, arg, parent_.values_.size());
             return parent_.create_view(std::make_shared<slice<int>>(combined_slice));
         }
-        std::shared_ptr<SeriesView> operator[](const py::slice& pySlice) const {
-            py::ssize_t start, stop, step, slicelength;
-            if (!pySlice.compute(parent_.values_.size(), &start, &stop, &step, &slicelength)) {
-                throw py::error_already_set();
+
+        std::shared_ptr<SeriesView> operator[](const nb::slice& nbSlice) const {
+            nb::ssize_t start, stop, step, slicelength;
+            if (!nbSlice.compute(parent_.values_.size(), &start, &stop, &step, &slicelength)) {
+                throw nb::error_already_set();
             }
             slice<int> arg(static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step));
             return (*this)[arg];
@@ -226,13 +291,13 @@ public:
     Series(Eigen::VectorXd values, std::shared_ptr<ObjectIndex> index)
         : values_(std::move(values)), index_(std::move(index)) {}
 
-    Series(py::array_t<double> values, py::array index) {
-        auto buf = values.unchecked<1>();
+    Series(nb::ndarray<double> values, nb::ndarray<nb::object> index) {
+        auto buf = values.view();
         this->values_.resize(buf.shape(0));
         for (std::ptrdiff_t i = 0; i < buf.shape(0); ++i) {
             this->values_(i) = buf(i);
         }
-        std::vector<std::string> keys = py::cast<std::vector<std::string>>(index);
+        std::vector<std::string> keys = nb::cast<std::vector<std::string>>(index);
         robin_hood::unordered_map<std::string, int> index_map;
         for (size_t i = 0; i < keys.size(); ++i) {
             index_map[keys[i]] = static_cast<Eigen::Index>(i);
@@ -326,13 +391,13 @@ public:
         return {mask_->length(), values_.cols()};
     }
 
-    py::array_t<double> get_col(const std::string& col) const {
+    nb::ndarray<double> get_col(const std::string& col) const {
         if (columns_->index_.find(col) == columns_->index_.end()) {
             throw std::invalid_argument("Column name not found");
         }
 
         int col_index = columns_->index_.at(col);
-        py::array_t<double> column(mask_->length());
+        nb::ndarray<double> column(mask_->length());
         auto buf = column.request();
         double* ptr = static_cast<double*>(buf.ptr);
 
@@ -351,11 +416,11 @@ public:
         return row_indices;
     }
 
-    py::array_t<double> values() const {
+    nb::ndarray<double> values() const {
         Eigen::Index num_rows = mask_->length();
         Eigen::Index num_cols = values_.cols();
 
-        py::array_t<double> result({num_rows, num_cols});
+        nb::ndarray<double> result({num_rows, num_cols});
         auto buf = result.request();
         double* ptr = static_cast<double*>(buf.ptr);
 
@@ -413,7 +478,6 @@ public:
             auto index_ = parent_.index_;
             auto columns_ = parent_.columns_;
 
-            //  Need to check if in mask
             if (index_->index_.find(idx) == index_->index_.end()) {
                 throw std::out_of_range("Key '" + idx + "' not found in the DataFrameView index.");
             }
@@ -438,14 +502,14 @@ public:
             return parent_.create_view(std::make_shared<slice<int>>(combined_slice));
         }
 
-        std::shared_ptr<DataFrameView> get(const py::slice& pySlice) const {
-            py::object py_start = pySlice.attr("start");
-            py::object py_stop = pySlice.attr("stop");
-            py::object py_step = pySlice.attr("step");
+        std::shared_ptr<DataFrameView> get(const nb::slice& nbSlice) const {
+            nb::object nb_start = nbSlice.attr("start");
+            nb::object nb_stop = nbSlice.attr("stop");
+            nb::object nb_step = nbSlice.attr("step");
 
-            std::string start = py::isinstance<py::none>(py_start) ? "" : py::cast<std::string>(py_start);
-            std::string stop = py::isinstance<py::none>(py_stop) ? "" : py::cast<std::string>(py_stop);
-            int step = py::isinstance<py::none>(py_step) ? 1 : py::cast<int>(py_step);
+            std::string start = nb::isinstance<nb::none>(nb_start) ? "" : nb::cast<std::string>(nb_start);
+            std::string stop = nb::isinstance<nb::none>(nb_stop) ? "" : nb::cast<std::string>(nb_stop);
+            int step = nb::isinstance<nb::none>(nb_step) ? 1 : nb::cast<int>(nb_step);
 
             slice<std::string> arg(start, stop, step);
 
@@ -482,10 +546,10 @@ public:
             return parent_.create_view(std::make_shared<slice<int>>(combined_slice));
         }
 
-        std::shared_ptr<DataFrameView> get(const py::slice& pySlice) const {
-            py::ssize_t start, stop, step, slicelength;
-            if (!pySlice.compute(parent_.values_.rows(), &start, &stop, &step, &slicelength)) {
-                throw py::error_already_set();
+        std::shared_ptr<DataFrameView> get(const nb::slice& nbSlice) const {
+            nb::ssize_t start, stop, step, slicelength;
+            if (!nbSlice.compute(parent_.values_.rows(), &start, &stop, &step, &slicelength)) {
+                throw nb::error_already_set();
             }
             slice<int> arg(static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step));
             return get(arg);
@@ -515,27 +579,27 @@ public:
     DataFrame(MatrixXdRowMajor values, std::shared_ptr<ObjectIndex> index, std::shared_ptr<ColumnIndex> columns)
         : values_(std::move(values)), index_(std::move(index)), columns_(std::move(columns)) {}
 
-    DataFrame(py::list values, py::list index, py::list columns) {
+    DataFrame(nb::list values, nb::list index, nb::list columns) {
         Eigen::Index rows = static_cast<Eigen::Index>(values.size());
-        Eigen::Index cols = static_cast<Eigen::Index>(py::len(values[0]));
+        Eigen::Index cols = static_cast<Eigen::Index>(nb::len(values[0]));
         values_ = MatrixXdRowMajor(rows, cols);
         for (Eigen::Index i = 0; i < rows; ++i) {
-            auto row = py::cast<py::list>(values[i]);
+            auto row = nb::cast<nb::list>(values[i]);
             for (Eigen::Index j = 0; j < cols; ++j) {
-                values_(i, j) = py::cast<double>(row[j]);
+                values_(i, j) = nb::cast<double>(row[j]);
             }
         }
         robin_hood::unordered_map<std::string, int> index_map;
         std::vector<std::string> index_keys;
-        for (py::ssize_t i = 0; i < index.size(); ++i) {
-            std::string key = py::cast<std::string>(index[i]);
+        for (nb::ssize_t i = 0; i < index.size(); ++i) {
+            std::string key = nb::cast<std::string>(index[i]);
             index_map[key] = static_cast<Eigen::Index>(i);
             index_keys.push_back(key);
         }
         robin_hood::unordered_map<std::string, int> column_map;
         std::vector<std::string> column_keys;
-        for (py::ssize_t i = 0; i < columns.size(); ++i) {
-            std::string key = py::cast<std::string>(columns[i]);
+        for (nb::ssize_t i = 0; i < columns.size(); ++i) {
+            std::string key = nb::cast<std::string>(columns[i]);
             column_map[key] = static_cast<Eigen::Index>(i);
             column_keys.push_back(key);
         }
@@ -543,9 +607,9 @@ public:
         columns_ = std::make_shared<ColumnIndex>(std::move(column_map), std::move(column_keys));
     }
 
-    DataFrame(py::array_t<double> values, py::array index, py::array columns) {
+    DataFrame(nb::ndarray<double> values, nb::ndarray<nb::object> index, nb::ndarray<nb::object> columns) {
         
-        auto buf = values.unchecked<2>();
+        auto buf = values.view();
         Eigen::Index rows = static_cast<Eigen::Index>(buf.shape(0));
         Eigen::Index cols = static_cast<Eigen::Index>(buf.shape(1));
         values_ = MatrixXdRowMajor(rows, cols);
@@ -556,17 +620,17 @@ public:
         }
         robin_hood::unordered_map<std::string, int> index_map;
         std::vector<std::string> index_keys;
-        auto index_array = index.cast<py::list>();
-        auto columns_array = columns.cast<py::list>();
-        for (py::ssize_t i = 0; i < index_array.size(); ++i) {
-            std::string key = py::cast<std::string>(index_array[i]);
+        auto index_array = index.cast<nb::list>();
+        auto columns_array = columns.cast<nb::list>();
+        for (nb::ssize_t i = 0; i < index_array.size(); ++i) {
+            std::string key = nb::cast<std::string>(index_array[i]);
             index_map[key] = static_cast<Eigen::Index>(i);
             index_keys.push_back(key);
         }
         robin_hood::unordered_map<std::string, int> column_map;
         std::vector<std::string> column_keys;
-        for (py::ssize_t i = 0; i < columns_array.size(); ++i) {
-            std::string key = py::cast<std::string>(columns_array[i]);
+        for (nb::ssize_t i = 0; i < columns_array.size(); ++i) {
+            std::string key = nb::cast<std::string>(columns_array[i]);
             column_map[key] = static_cast<Eigen::Index>(i);
             column_keys.push_back(key);
         }
@@ -594,13 +658,13 @@ public:
         return {values_.rows(), values_.cols()};
     }
 
-    py::array_t<double> get_col(const std::string& col) const {
+    nb::ndarray<double> get_col(const std::string& col) const {
         if (columns_->index_.find(col) == columns_->index_.end()) {
             throw std::invalid_argument("Column name not found");
         }
 
         int col_index = columns_->index_.at(col);
-        py::array_t<double> column(values_.rows());
+        nb::ndarray<double> column(values_.rows());
         auto buf = column.request();
         double* ptr = static_cast<double*>(buf.ptr);
 
@@ -615,11 +679,11 @@ public:
         return index_->keys();
     }
 
-    py::array_t<double> values() const {
+    nb::ndarray<double> values() const {
         Eigen::Index num_rows = values_.rows();
         Eigen::Index num_cols = values_.cols();
 
-        py::array_t<double> result({num_rows, num_cols});
+        nb::ndarray<double> result({num_rows, num_cols});
         auto buf = result.request();
         double* ptr = static_cast<double*>(buf.ptr);
 
@@ -716,14 +780,14 @@ public:
             return frame_->create_view(std::make_shared<slice<int>>(combined_slice));
         }
 
-        std::shared_ptr<DataFrameView> get(const py::slice& pySlice) const {
-            py::object py_start = pySlice.attr("start");
-            py::object py_stop = pySlice.attr("stop");
-            py::object py_step = pySlice.attr("step");
+        std::shared_ptr<DataFrameView> get(const nb::slice& nbSlice) const {
+            nb::object nb_start = nbSlice.attr("start");
+            nb::object nb_stop = nbSlice.attr("stop");
+            nb::object nb_step = nbSlice.attr("step");
 
-            std::string start = py::isinstance<py::none>(py_start) ? "" : py::cast<std::string>(py_start);
-            std::string stop = py::isinstance<py::none>(py_stop) ? "" : py::cast<std::string>(py_stop);
-            int step = py::isinstance<py::none>(py_step) ? 1 : py::cast<int>(py_step);
+            std::string start = nb::isinstance<nb::none>(nb_start) ? "" : nb::cast<std::string>(nb_start);
+            std::string stop = nb::isinstance<nb::none>(nb_stop) ? "" : nb::cast<std::string>(nb_stop);
+            int step = nb::isinstance<nb::none>(nb_step) ? 1 : nb::cast<int>(nb_step);
 
             slice<std::string> arg(start, stop, step);
             return get(arg);
@@ -742,10 +806,10 @@ public:
             return frame_->create_view(std::make_shared<slice<int>>(combined_slice));
         }
 
-        std::shared_ptr<DataFrameView> get(const py::slice& pySlice) const {
-            py::ssize_t start, stop, step, slicelength;
-            if (!pySlice.compute(frame_->values_.rows(), &start, &stop, &step, &slicelength)) {
-                throw py::error_already_set();
+        std::shared_ptr<DataFrameView> get(const nb::slice& nbSlice) const {
+            nb::ssize_t start, stop, step, slicelength;
+            if (!nbSlice.compute(frame_->values_.rows(), &start, &stop, &step, &slicelength)) {
+                throw nb::error_already_set();
             }
 
             slice<int> arg(static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step));
@@ -780,27 +844,23 @@ public:
 };
 
 
-PYBIND11_MODULE(sloth, m) {
-    py::class_<slice<int>>(m, "slice")
-        .def(py::init<int, int, int>())
+NB_MODULE(cloth, m) {
+    nb::class_<slice<int>>(m, "slice")
+        .def(nb::init<int, int, int>())
         .def("normalize", &slice<int>::normalize)
         .def("length", &slice<int>::length);
-        // .def_property_readonly("start", &slice<int>::get_start)
-        // .def_property_readonly("stop", &slice<int>::get_stop)
-        // .def_property_readonly("step", &slice<int>::get_step)
-        // .def("__repr__", &slice<int>::repr);
 
-    py::class_<Index_, std::shared_ptr<Index_>>(m, "Index_");
+    nb::class_<Index_, std::shared_ptr<Index_>>(m, "Index_");
 
-    py::class_<ObjectIndex, Index_, std::shared_ptr<ObjectIndex>>(m, "ObjectIndex")
-        .def(py::init<robin_hood::unordered_map<std::string, int>, std::vector<std::string>>())
+    nb::class_<ObjectIndex, Index_, std::shared_ptr<ObjectIndex>>(m, "ObjectIndex")
+        .def(nb::init<robin_hood::unordered_map<std::string, int>, std::vector<std::string>>())
         .def("keys", &ObjectIndex::keys)
         .def("get_mask", &ObjectIndex::get_mask);
 
-    py::class_<DataFrame, std::shared_ptr<DataFrame>>(m, "DataFrame")
-        .def(py::init<MatrixXdRowMajor, std::shared_ptr<ObjectIndex>, std::shared_ptr<ColumnIndex>>())
-        .def(py::init<py::list, py::list, py::list>())
-        .def(py::init<py::array_t<double>, py::array, py::array>())
+    nb::class_<DataFrame, std::shared_ptr<DataFrame>>(m, "DataFrame")
+        .def(nb::init<MatrixXdRowMajor, std::shared_ptr<ObjectIndex>, std::shared_ptr<ColumnIndex>>())
+        .def(nb::init<nb::list, nb::list, nb::list>())
+        .def(nb::init<nb::ndarray<double>, nb::ndarray<nb::object>, nb::ndarray<nb::object>>())
         .def("__repr__", &DataFrame::repr)
         .def_property_readonly("shape", &DataFrame::shape)
         .def("__getitem__", &DataFrame::get_col)
@@ -813,19 +873,19 @@ PYBIND11_MODULE(sloth, m) {
         .def("max", &DataFrame::max)
         .def_property_readonly("index", &DataFrame::get_index);
 
-    py::class_<DataFrame::LocProxy>(m, "DataFrameLocProxy")
-        .def(py::init<DataFrame*>())
+    nb::class_<DataFrame::LocProxy>(m, "DataFrameLocProxy")
+        .def(nb::init<DataFrame*>())
         .def("__getitem__", (std::shared_ptr<Series> (DataFrame::LocProxy::*)(const std::string&) const) &DataFrame::LocProxy::get)
         .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::LocProxy::*)(const slice<std::string>&) const) &DataFrame::LocProxy::get)
-        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::LocProxy::*)(const py::slice&) const) &DataFrame::LocProxy::get);
+        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::LocProxy::*)(const nb::slice&) const) &DataFrame::LocProxy::get);
 
-    py::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
-        .def(py::init<DataFrame*>())
+    nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
+        .def(nb::init<DataFrame*>())
         .def("__getitem__", (std::shared_ptr<Series> (DataFrame::IlocProxy::*)(int) const) &DataFrame::IlocProxy::get)
         .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::IlocProxy::*)(const slice<int>&) const) &DataFrame::IlocProxy::get)
-        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::IlocProxy::*)(const py::slice&) const) &DataFrame::IlocProxy::get);
+        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrame::IlocProxy::*)(const nb::slice&) const) &DataFrame::IlocProxy::get);
 
-    py::class_<DataFrameView, std::shared_ptr<DataFrameView>>(m, "DataFrameView")
+    nb::class_<DataFrameView, std::shared_ptr<DataFrameView>>(m, "DataFrameView")
         .def("__repr__", &DataFrameView::repr)
         .def_property_readonly("shape", &DataFrameView::shape)
         .def("__getitem__", &DataFrameView::get_col)
@@ -835,19 +895,19 @@ PYBIND11_MODULE(sloth, m) {
         .def_property_readonly("iloc", &DataFrameView::iloc)
         .def_property_readonly("index", &DataFrameView::get_index);
 
-    py::class_<DataFrameView::LocProxy>(m, "DataFrameViewLocProxy")
+    nb::class_<DataFrameView::LocProxy>(m, "DataFrameViewLocProxy")
         .def("__getitem__", (std::shared_ptr<Series> (DataFrameView::LocProxy::*)(const std::string&) const) &DataFrameView::LocProxy::get)
         .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::LocProxy::*)(const slice<std::string>&) const) &DataFrameView::LocProxy::get)
-        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::LocProxy::*)(const py::slice&) const) &DataFrameView::LocProxy::get);
+        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::LocProxy::*)(const nb::slice&) const) &DataFrameView::LocProxy::get);
 
-    py::class_<DataFrameView::IlocProxy>(m, "DataFrameViewIlocProxy")
+    nb::class_<DataFrameView::IlocProxy>(m, "DataFrameViewIlocProxy")
         .def("__getitem__", (std::shared_ptr<Series> (DataFrameView::IlocProxy::*)(int) const) &DataFrameView::IlocProxy::get)
         .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::IlocProxy::*)(const slice<int>&) const) &DataFrameView::IlocProxy::get)
-        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::IlocProxy::*)(const py::slice&) const) &DataFrameView::IlocProxy::get);
+        .def("__getitem__", (std::shared_ptr<DataFrameView> (DataFrameView::IlocProxy::*)(const nb::slice&) const) &DataFrameView::IlocProxy::get);
 
-    py::class_<Series, std::shared_ptr<Series>>(m, "Series")
-        .def(py::init<Eigen::VectorXd, std::shared_ptr<ObjectIndex>>())
-        .def(py::init<py::array_t<double>, py::array>())
+    nb::class_<Series, std::shared_ptr<Series>>(m, "Series")
+        .def(nb::init<Eigen::VectorXd, std::shared_ptr<ObjectIndex>>())
+        .def(nb::init<nb::ndarray<double>, nb::ndarray<nb::object>>())
         .def("sum", &Series::sum)
         .def("mean", &Series::mean)
         .def("min", &Series::min)
@@ -858,10 +918,10 @@ PYBIND11_MODULE(sloth, m) {
         .def_property_readonly("index", &Series::get_index);
 
 
-    py::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
-        .def("__getitem__", &Series::IlocProxy::operator[], py::is_operator());
+    nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
+        .def("__getitem__", &Series::IlocProxy::operator[], nb::is_operator());
 
-    py::class_<SeriesView, std::shared_ptr<SeriesView>>(m, "SeriesView")
+    nb::class_<SeriesView, std::shared_ptr<SeriesView>>(m, "SeriesView")
         .def("__repr__", &SeriesView::repr)
         .def_property_readonly("size", &SeriesView::size)
         .def("sum", &SeriesView::sum)
@@ -871,4 +931,5 @@ PYBIND11_MODULE(sloth, m) {
         .def_property_readonly("iloc", &SeriesView::iloc)
         .def("__getitem__", &SeriesView::get_row)
         .def_property_readonly("index", &SeriesView::get_index);
+
 }
