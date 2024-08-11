@@ -507,7 +507,12 @@ public:
     }
 
     virtual Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> values() {
-        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(values_->data(), values_->rows(), values_->cols());
+        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
+            values_->data(), 
+            values_->rows(), 
+            values_->cols(),
+            Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(values_->cols(), 1)
+        );
     }
 
 
