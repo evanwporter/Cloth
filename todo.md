@@ -1,6 +1,7 @@
 # Todo
 
 * Split C++ API Independent From Python API
+* ~~Add head and tail function~~
 * ~~Pretty Print Table~~
 * Clean up the code
     * Add/remove `const` from places (I think I've been overly liberal here)
@@ -27,7 +28,7 @@
         * Keyword Row Indexing (loc)
             * Slice
             * Keyword
-* Better options for combing slice with int
+* Better options for combining slice with int
 * More Indices
     * RangeIndex
     * DateTimeIndex
@@ -38,4 +39,5 @@
 * Fix the bug in how things are displayed when columns are even for a Series
 * Add logging
 * Add assertions (that can be turned off via macros)
+* Allow other types other than double
 * NDimFrame??? -> Difficult but doable

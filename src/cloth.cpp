@@ -9,10 +9,8 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
-
 #include <nanobind/eigen/dense.h>
 
 
@@ -98,6 +96,22 @@ slice<T> combine_slices(const slice<T>& mask, const slice<T>& overlay) {
 
     return slice<T>(start, stop, step);
 }
+
+template <typename T = Eigen::Index>
+T combine_slice_with_index(const slice<T>& mask, T index) {
+    LOG("Combining slice with index: mask(" << mask.start << ", " << mask.stop << ", " << mask.step << "), index=" << index);
+
+    if (index < 0 || index >= mask.length()) {
+        throw std::out_of_range("Index is out of bounds of the mask slice. Be sure to normalize slice first.");
+    }
+
+    T combined_index = mask.start + (index * mask.step);
+
+    LOG("Resulting combined index: " << combined_index);
+
+    return combined_index;
+}
+
 
 typedef slice<Eigen::Index> mask_t;
 
@@ -392,8 +406,6 @@ public:
     //     }
     //     return os;
     // }
-
-
 
     // const ObjectIndex& index() const override {
     //     std::vector<std::string> masked_keys;
