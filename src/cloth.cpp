@@ -21,6 +21,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <numeric>
+#include <iomanip>
 
 #include <iostream>
 
@@ -520,18 +521,61 @@ public:
         return *index_;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
-        os << "DataFrame\nRows: " << df.rows() << ", Columns: " << df.cols() << "\nValues:\n";
+    Series operator[](const std::string& colName) const {
+        return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
+    }
 
-        // Iterate over the masked rows
-        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
-            for (Eigen::Index j = 0; j < df.values_->cols(); ++j) {
-                os << df.values_->operator()(i, j) << " ";
-            }
-            os << "\n";
+
+    friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
+        std::vector<std::string> rowNames = df.index_->keys();
+        std::vector<std::string> colNames = df.columns_->keys();
+
+        // Max width of each column
+        std::vector<size_t> colWidths(colNames.size(), 0);
+
+        // Calculate the max width for each column based on column names
+        for (size_t j = 0; j < colNames.size(); ++j) {
+            colWidths[j] = colNames[j].length();
         }
+
+        // Calculate the max width for each column based on data
+        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
+            for (Eigen::Index j = 0; j < df.cols(); ++j) {
+                std::ostringstream temp_oss;
+                temp_oss << std::fixed << std::setprecision(2) << (*df.values_)(i, j);
+                if (temp_oss.str().length() > colWidths[j]) {
+                    colWidths[j] = temp_oss.str().length();
+                }
+            }
+        }
+
+        // Determine the max width of the row names
+        size_t rowNameWidth = 0;
+        for (const auto& rowName : rowNames) {
+            if (rowName.length() > rowNameWidth) {
+                rowNameWidth = rowName.length();
+            }
+        }
+
+        // Format the column headers with appropriate padding for the row names
+        os << std::setw(static_cast<int>(rowNameWidth) + 2) << " "; // Adjust space for row names
+        for (size_t j = 0; j < colNames.size(); ++j) {
+            os << std::setw(colWidths[j] + 2) << colNames[j];
+        }
+        os << std::endl;
+
+        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
+            os << std::setw(static_cast<int>(rowNameWidth) + 2) << rowNames[i]; // Align row names
+            for (Eigen::Index j = 0; j < df.cols(); ++j) {
+                os << std::setw(colWidths[j] + 2) 
+                << std::fixed << std::setprecision(2) << (*df.values_)(i, j);
+            }
+            os << std::endl;
+        }
+
         return os;
     }
+
 
     std::string to_string() const {
         std::ostringstream oss;
@@ -574,6 +618,7 @@ public:
         //     stride
         // );
         // std::cout << ma;
+
         return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
             values_->data() + start_row * cols, // Pointer to the starting element
             row_length,
@@ -664,7 +709,10 @@ NB_MODULE(cloth, m) {
         .def("__repr__", &DataFrame::to_string)
         .def(nb::init<nb::ndarray<>, nb::list, nb::list>())
         .def_prop_ro("values", &DataFrame::values)
-        .def_prop_ro("iloc", &DataFrame::iloc);
+        .def_prop_ro("iloc", &DataFrame::iloc)
+        .def("__getitem__", &DataFrame::operator[], nb::is_operator())
+        .def("__getattr__", &DataFrame::operator[], nb::is_operator());
+
 
     nb::class_<DataFrame::view, DataFrame>(m, "DataFrameView")
         .def(nb::init<const DataFrame&, std::shared_ptr<slice<Eigen::Index>>>())
