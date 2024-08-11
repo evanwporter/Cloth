@@ -340,7 +340,8 @@ public:
             if (idx < 0 || idx >= parent.size()) {
                 throw std::out_of_range("Index out of range");
             }
-            return (*parent.values_)(combine_slices(*parent.mask_, slice<Eigen::Index>(idx, idx + 1, 1, parent.length())).start);
+            Eigen::Index combined_index = combine_slice_with_index(*parent.mask_, idx);
+            return (*parent.values_)(combined_index);
         }
 
         // std::shared_ptr<SeriesView> operator[](Eigen::Index idx) const {
@@ -504,8 +505,8 @@ public:
             if (idx < 0 || idx >= parent.rows()) {
                 throw std::out_of_range("Index out of range");
             }
-            // Extract the correct row using the mask and the requested index
-            auto row = std::make_shared<Eigen::VectorXd>(parent.values_->row(parent.mask_->start + idx * parent.mask_->step).transpose());
+            Eigen::Index combined_index = combine_slice_with_index(*parent.mask_, idx);
+            auto row = std::make_shared<Eigen::VectorXd>(parent.values_->row(combined_index).transpose());
             return Series(row, parent.columns_);
         }
     };
