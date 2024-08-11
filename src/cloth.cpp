@@ -420,13 +420,13 @@ Series::view Series::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
     return Series::view(parent, combined_mask);
 }
 
-// Series::view Series::head(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
-// }
+Series::view Series::head(Eigen::Index n) const {
+    return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
+}
 
-// Series::view Series::tail(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
-// }
+Series::view Series::tail(Eigen::Index n) const {
+    return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
+}
 
 class DataFrame {
 public:
@@ -669,7 +669,6 @@ DataFrame::view DataFrame::IlocProxy::operator[](slice<Eigen::Index>& overlay) c
 }
 
 DataFrame::view DataFrame::head(Eigen::Index n) const {
-    LOG("AT HEAD");
     return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
 }
 
@@ -723,9 +722,9 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("mask", [](const Series &series) {
             return *series.mask_;
         })
-        .def_prop_ro("iloc", &Series::iloc);
-        // .def("head", &Series::head)
-        // .def("tail", &Series::tail);
+        .def_prop_ro("iloc", &Series::iloc)
+        .def("head", &Series::head)
+        .def("tail", &Series::tail);
 
     nb::class_<Series::view, Series>(m, "SeriesView")
         .def(nb::init<const Series&, std::shared_ptr<slice<Eigen::Index>>>())
