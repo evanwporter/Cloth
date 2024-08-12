@@ -387,8 +387,6 @@ public:
         return *index_;
     }
 
-    class view;
-
     class IlocProxy : public IlocBase<Series> {
     private:
         Series& parent_;
@@ -436,34 +434,6 @@ public:
     }
 };
 
-class Series::view : public Series {
-public:
-    std::shared_ptr<ObjectIndex> index_;
-    std::shared_ptr<slice<Eigen::Index>> mask_;
-
-    Series::view(const Series& parent, std::shared_ptr<slice<Eigen::Index>> mask)
-        : Series(parent, mask), mask_(std::move(mask)) {
-        LOG("Constructing Series::view with parent Series and mask(" << mask_->start << ", " << mask_->stop << ", " << mask_->step << ")");
-
-        if (!mask_) {
-            LOG("Error: Mask is null!");
-            throw std::invalid_argument("Mask cannot be null");
-        }
-
-        // Re-initialize indices to reflect the mask
-        this->index_ = parent.index_->fast_init(mask_);
-        LOG("Series::view constructed successfully with index: " << *this->index_);
-    }
-};
-
-// Series::view Series::head(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
-// }
-
-// Series::view Series::tail(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
-// }
-
 class DataFrame : public Frame<DataFrame> {
 public:
     std::shared_ptr<MatrixXdRowMajor> values_;
@@ -496,8 +466,6 @@ public:
     std::shared_ptr<slice<Eigen::Index>> mask() const {
         return mask_;
     }
-
-    class view;
 
     class IlocProxy : IlocBase<DataFrame> {
     private:
@@ -571,10 +539,6 @@ public:
         return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
     }
 
-    // view head(Eigen::Index n) const;
-
-    // view tail(Eigen::Index n) const;
-
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
         std::vector<std::string> rowNames = df.index_->keys();
         std::vector<std::string> colNames = df.columns_->keys();
@@ -631,31 +595,6 @@ public:
         return oss.str();
     }
 };
-
-class DataFrame::view : public DataFrame {
-public:
-    std::shared_ptr<ObjectIndex> index_;
-    std::shared_ptr<slice<Eigen::Index>> mask_;
-
-    DataFrame::view(const DataFrame& parent, std::shared_ptr<slice<Eigen::Index>> mask)
-        : DataFrame(parent, mask), mask_(std::move(mask)) {
-        // Re-initialize indices to reflect the mask
-        this->index_ = parent.index_->fast_init(mask_);
-    }
-
-    // const ObjectIndex& index() const override {
-    //     return *index_;
-    // }
-};
-
-
-// DataFrame::view DataFrame::head(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
-// }
-
-// DataFrame::view DataFrame::tail(Eigen::Index n) const {
-//     return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
-// }
 
 
 NB_MODULE(cloth, m) {
@@ -721,16 +660,6 @@ NB_MODULE(cloth, m) {
         .def("head", &Series::head)
         .def("tail", &Series::tail);
 
-    nb::class_<Series::view, Series>(m, "SeriesView")
-        .def(nb::init<const Series&, std::shared_ptr<slice<Eigen::Index>>>())
-        .def_prop_ro("mask", [](const Series::view &view) {
-            return *view.mask_;
-        });
-        // .def("__repr__", &Series::view::to_string);
-
-        // .def("values", &Series::view::values)
-        // .def("index", &Series::view::index);
-
     nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
         .def("__getitem__", [](DataFrame::IlocProxy& self, Eigen::Index idx) {
             return self[idx];
@@ -764,11 +693,4 @@ NB_MODULE(cloth, m) {
         .def("__len__", &DataFrame::length)
         .def("head", &DataFrame::head)
         .def("tail", &DataFrame::tail);
-
-
-    nb::class_<DataFrame::view, DataFrame>(m, "DataFrameView")
-        .def(nb::init<const DataFrame&, std::shared_ptr<slice<Eigen::Index>>>())
-        .def_prop_ro("mask", [](const DataFrame::view &view) {
-            return *view.mask_;
-        });
 }
