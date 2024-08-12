@@ -871,6 +871,8 @@ NB_MODULE(cloth, m) {
         .def("mean", &DataFrame::mean)
         .def("min", &DataFrame::min)
         .def("max", &DataFrame::max)
+        .def("rows", &DataFrame::rows)
+        .def("cols", &DataFrame::cols)
         .def_property_readonly("index", &DataFrame::get_index);
 
     nb::class_<DataFrame::LocProxy>(m, "DataFrameLocProxy")

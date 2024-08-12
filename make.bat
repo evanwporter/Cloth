@@ -8,13 +8,13 @@ echo Command-line argument: %1
 
 if "%1"=="clean" goto clean
 if "%1"=="package" goto package
-if "%1"=="compile" goto compile
+if "%1"=="build" goto build
 if "%1"=="html" goto html
 if "%1"=="profile" goto profile
 
 REM Default case: no valid argument provided
 echo No valid argument provided.
-echo Usage: make.bat [clean|package|compile|html|profile [profile_file]]
+echo Usage: make.bat [clean|package|build|html|profile [profile_file]]
 goto end
 
 :clean
@@ -47,7 +47,7 @@ echo Packaging the project...
 pip install .
 goto end
 
-:compile
+:build
 echo Compiling Cython files...
 pip install --no-build-isolation -ve .
 goto end
