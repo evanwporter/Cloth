@@ -226,36 +226,46 @@ public:
     virtual Derived& parent() = 0;
 
     Derived operator[](nb::object& nbSlice) {
-        nb::object start, stop, step;
         std::string start_str, stop_str;
         Eigen::Index step_int = 1;
 
+        // Set default values
+        Eigen::Index start_ = 0;
+        Eigen::Index stop_ = parent().length(); // default to length (exclusive)
+
+        // Check if the object has the 'start' attribute
         if (nb::hasattr(nbSlice, "start")) {
-            start = nb::getattr(nbSlice, "start");
+            nb::object start = nb::getattr(nbSlice, "start");
             if (!start.is_none()) {
                 start_str = nb::cast<std::string>(start);
+                start_ = parent().index_->operator[](start_str);
             }
         }
 
+        // Check if the object has the 'stop' attribute
         if (nb::hasattr(nbSlice, "stop")) {
-            stop = nb::getattr(nbSlice, "stop");
+            nb::object stop = nb::getattr(nbSlice, "stop");
             if (!stop.is_none()) {
                 stop_str = nb::cast<std::string>(stop);
+                stop_ = parent().index_->operator[](stop_str);
             }
         }
 
+        // Check if the object has the 'step' attribute
         if (nb::hasattr(nbSlice, "step")) {
-            step = nb::getattr(nbSlice, "step");
+            nb::object step = nb::getattr(nbSlice, "step");
             if (!step.is_none()) {
                 step_int = nb::cast<Eigen::Index>(step);
             }
         }
 
-        Eigen::Index start_ = parent().index_->operator[](start_str);
-        Eigen::Index stop_ = parent().index_->operator[](stop_str);
+        // Adjust stop to be inclusive
+        stop_ += 1;
 
+        // Create a slice object with the obtained indices
         auto overlay = slice<Eigen::Index>(start_, stop_, step_int, parent().length());
 
+        // Return the appropriate slice from parent object's iloc
         return parent().iloc()[overlay];
     }
 };
@@ -522,17 +532,21 @@ public:
         return values_->cols();
     }
 
-    virtual const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const {
-        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
-            values_->data() + mask_->start, 
+    const Eigen::Map<const MatrixXdRowMajor> values() const {
+        return Eigen::Map<const MatrixXdRowMajor>(
+            values_->data() + mask_->start * values_->cols(), 
             mask_->length(), 
-            Eigen::Stride<Eigen::Dynamic, 1>(1, 1)
+            values_->cols()
         );
     }
 
 
-    virtual const ObjectIndex& index() const {
+    const ObjectIndex& index() const {
         return *index_;
+    }
+
+    const ObjectIndex& columns() const {
+        return *columns_;
     }
 
     Series operator[](const std::string& colName) const {
@@ -540,54 +554,46 @@ public:
     }
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
+        // Extract row and column names
+        auto &values = df.values();
         std::vector<std::string> rowNames = df.index_->keys();
         std::vector<std::string> colNames = df.columns_->keys();
 
-        // Max width of each column
-        std::vector<size_t> colWidths(colNames.size(), 0);
-
-        // Calculate the max width for each column based on column names
-        for (size_t j = 0; j < colNames.size(); ++j) {
-            colWidths[j] = colNames[j].length();
-        }
-
-        // Calculate the max width for each column based on data
-        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
-            for (Eigen::Index j = 0; j < df.cols(); ++j) {
-                std::ostringstream temp_oss;
-                temp_oss << std::fixed << std::setprecision(2) << (*df.values_)(i, j);
-                if (temp_oss.str().length() > colWidths[j]) {
-                    colWidths[j] = temp_oss.str().length();
-                }
+        std::vector<size_t> colWidths(colNames.size());
+        
+        for (size_t i = 0; i < colNames.size(); ++i) {
+            colWidths[i] = colNames[i].length();
+            for (size_t j = 0; j < rowNames.size(); ++j) {
+                std::stringstream temp_ss;
+                temp_ss << values(j, i);
+                colWidths[i] = std::max(colWidths[i], temp_ss.str().length());
             }
         }
 
-        // Determine the max width of the row names
         size_t rowNameWidth = 0;
-        for (const auto& rowName : rowNames) {
-            if (rowName.length() > rowNameWidth) {
-                rowNameWidth = rowName.length();
-            }
+        for (const auto &rowName : rowNames) {
+            rowNameWidth = std::max(rowNameWidth, rowName.length());
         }
 
-        // Format the column headers with appropriate padding for the row names
-        os << std::setw(static_cast<int>(rowNameWidth) + 2) << " "; // Adjust space for row names
-        for (size_t j = 0; j < colNames.size(); ++j) {
-            os << std::setw(colWidths[j] + 2) << colNames[j];
+        // Print header
+        os << std::setw(rowNameWidth) << " ";
+        for (size_t i = 0; i < colNames.size(); ++i) {
+            os << std::setw(colWidths[i] + 2) << colNames[i];
         }
         os << std::endl;
 
-        for (Eigen::Index i = df.mask_->start; i < df.mask_->stop; i += df.mask_->step) {
-            os << std::setw(static_cast<int>(rowNameWidth) + 2) << rowNames[i]; // Align row names
-            for (Eigen::Index j = 0; j < df.cols(); ++j) {
-                os << std::setw(colWidths[j] + 2) 
-                << std::fixed << std::setprecision(2) << (*df.values_)(i, j);
+        // Print rows
+        for (size_t i = 0; i < values.rows(); ++i) {
+            os << std::setw(rowNameWidth) << rowNames[i];
+            for (size_t j = 0; j < values.cols(); ++j) {
+                os << std::setw(colWidths[j] + 2) << values(i, j);
             }
             os << std::endl;
         }
 
         return os;
     }
+
 
     std::string to_string() const {
         std::ostringstream oss;
@@ -618,7 +624,10 @@ NB_MODULE(cloth, m) {
         // .def_rw("mask", &ObjectIndex::mask_);
         .def("__getitem__", [](ObjectIndex& self, std::string& key) {
             return self[key];
-        }, nb::is_operator());
+        }, nb::is_operator())
+        .def_prop_ro("mask", [](const DataFrame &df) {
+            return *df.mask();
+        });
 
     m.attr("ColumnIndex") = m.attr("ObjectIndex");
 
@@ -649,7 +658,6 @@ NB_MODULE(cloth, m) {
         .def("mean", &Series::mean)
         .def("min", &Series::min)
         .def("max", &Series::max)
-        .def("get_index", &Series::get_index)
         .def_prop_ro("values", &Series::values)
         .def("length", &Series::length)
         .def_prop_ro("mask", [](const Series &series) {
@@ -690,7 +698,13 @@ NB_MODULE(cloth, m) {
         .def("length", &DataFrame::length)
         .def("rows", &DataFrame::rows)
         .def("cols", &DataFrame::cols)
+        .def_prop_ro("mask", [](const DataFrame &df) {
+            return *df.mask();
+        })
         .def("__len__", &DataFrame::length)
         .def("head", &DataFrame::head)
-        .def("tail", &DataFrame::tail);
+        .def("tail", &DataFrame::tail)
+        .def_prop_ro("index", &DataFrame::index)
+        .def_prop_ro("columns", &DataFrame::columns);
+
 }

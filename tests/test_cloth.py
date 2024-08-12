@@ -105,18 +105,18 @@ def test_dataframe_iloc_slice():
     # assert subdf["col2"].sum() == 10.0
 
 
-# def test_dataframe_loc():
-#     values = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
-#     index = ["row1", "row2", "row3", "row4"]
-#     columns = ["col1", "col2"]
-#     df = cloth.DataFrame(values, index, columns)
+def test_dataframe_loc():
+    values = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
+    index = ["row1", "row2", "row3", "row4"]
+    columns = ["col1", "col2"]
+    df = cloth.DataFrame(values, index, columns)
 
-#     series = df.loc["row2"]
-#     assert series.sum() == 7.0
+    series = df.loc["row2"]
+    assert series.sum() == 7.0
 
-#     sliced_df = df.loc["row2":"row4"]
-#     assert sliced_df.rows() == 3
-#     assert sliced_df["col1"].sum() == 15.0
+    sliced_df = df.loc["row2":"row4"]
+    assert sliced_df.rows() == 3
+    assert sliced_df["col1"].sum() == 16.0
 
 
 if __name__ == "__main__":
