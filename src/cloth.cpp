@@ -112,22 +112,8 @@ T combine_slice_with_index(const slice<T>& mask, T index) {
     return combined_index;
 }
 
-
-typedef slice<Eigen::Index> mask_t;
-
-// template <typename T = double>
-// std::vector<T> ndarray2vec(nb::ndarray<> arr) {
-//     if (arr.ndim() != 1 || arr.dtype() != nb::dtype<T>()) {
-//         throw std::invalid_argument("Input should be a 1D array of doubles");
-//     }
-
-//     std::vector<T> vec(arr.size());
-
-//     // Copy data from the NumPy array to the std::vector
-//     std::memcpy(vec.data(), arr.data(), arr.size() * sizeof(T));
-
-//     return vec;
-// }
+typedef Eigen::Index index_t;
+typedef slice<index_t> mask_t;
 
 class Index_ {
 public:
@@ -209,7 +195,95 @@ public:
 
 typedef ObjectIndex ColumnIndex;
 
-class Series {
+template <typename Derived>
+class IlocBase {
+public:
+    virtual ~IlocBase() = default;
+    IlocBase() = default;
+
+    virtual Derived& parent() = 0;
+
+    Derived operator[](slice<Eigen::Index>& overlay) {
+        overlay.normalize(parent().length());
+        auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent().mask_, overlay));
+        return Derived(parent(), combined_mask);
+    }
+
+    Derived operator[](nb::slice& nbSlice) {
+        auto [start, stop, step, slice_length] = nbSlice.compute(parent().length());
+        auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<Eigen::Index>(start), static_cast<Eigen::Index>(stop), static_cast<Eigen::Index>(step), parent().length());
+        auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent().mask_, *overlay));
+        return Derived(parent(), combined_mask);
+    }
+};
+
+template <typename Derived>
+class LocBase {
+public:
+    virtual ~LocBase() = default;
+    LocBase() = default;
+
+    virtual Derived& parent() = 0;
+
+    Derived operator[](nb::object& nbSlice) {
+        nb::object start, stop, step;
+        std::string start_str, stop_str;
+        Eigen::Index step_int = 1;
+
+        if (nb::hasattr(nbSlice, "start")) {
+            start = nb::getattr(nbSlice, "start");
+            if (!start.is_none()) {
+                start_str = nb::cast<std::string>(start);
+            }
+        }
+
+        if (nb::hasattr(nbSlice, "stop")) {
+            stop = nb::getattr(nbSlice, "stop");
+            if (!stop.is_none()) {
+                stop_str = nb::cast<std::string>(stop);
+            }
+        }
+
+        if (nb::hasattr(nbSlice, "step")) {
+            step = nb::getattr(nbSlice, "step");
+            if (!step.is_none()) {
+                step_int = nb::cast<Eigen::Index>(step);
+            }
+        }
+
+        Eigen::Index start_ = parent().index_->operator[](start_str);
+        Eigen::Index stop_ = parent().index_->operator[](stop_str);
+
+        auto overlay = slice<Eigen::Index>(start_, stop_, step_int, parent().length());
+
+        return parent().iloc()[overlay];
+    }
+};
+
+template <typename Derived>
+class Frame {
+public:
+    virtual ~Frame() = default;
+    Frame() = default;
+
+    virtual Eigen::Index length() const {
+        return mask()->length();
+    }
+
+    virtual std::shared_ptr<slice<Eigen::Index>> mask() const = 0;
+
+    Derived head(Eigen::Index n) const {
+        return Derived(static_cast<const Derived&>(*this), 
+                       std::make_shared<slice<Eigen::Index>>(0, std::min(n, length()), 1));
+    }
+
+    Derived tail(Eigen::Index n) const {
+        return Derived(static_cast<const Derived&>(*this), 
+                       std::make_shared<slice<Eigen::Index>>(length() - std::min(n, length()), length(), 1));
+    }
+};
+
+class Series : public Frame<Series> {
 public:
     std::shared_ptr<Eigen::VectorXd> values_;
     std::shared_ptr<ObjectIndex> index_;
@@ -218,7 +292,7 @@ public:
           
     Series(const Series& other,  std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-          index_(other.index_),
+          index_(other.index_->fast_init(mask)),
           name_(other.name_),
           mask_(mask) {}
 
@@ -263,16 +337,14 @@ public:
         return os;
     }
 
+    std::shared_ptr<slice<Eigen::Index>> mask() const {
+        return mask_;
+    }
 
     std::string to_string() const {
         std::ostringstream oss;
         oss << *this;
         return oss.str();
-    }
-
-    virtual Eigen::Index length() const {
-        LOG("Calculating length of Series");
-        return mask_->length();  // Use mask_ to determine length
     }
     
     Eigen::Index size() const {
@@ -295,20 +367,16 @@ public:
         return values().maxCoeff();
     }
 
-    // double get_row(const std::string& arg) const {
-    //     if (index_->index_.find(arg) == index_->index_.end()) {
-    //         throw std::out_of_range("Key '" + arg + "' not found in the Series index.");
-    //     }
-    //     int idx = index_->index_.at(arg);
-    //     return values_->(idx);
-    // }
-
     std::vector<std::string> get_index() const {
         return index_->keys();
     }
 
-    virtual const Eigen::VectorXd& values() const {
-        return *values_;
+    const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const {
+        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
+            values_->data() + mask_->start, 
+            mask_->length(), 
+            Eigen::Stride<Eigen::Dynamic, 1>(1, 1)
+        );
     }
 
     Eigen::VectorXd py_val() const {
@@ -321,37 +389,50 @@ public:
 
     class view;
 
-    view head(Eigen::Index n) const;
-
-    view tail(Eigen::Index n) const;
-
-    class IlocProxy {
+    class IlocProxy : public IlocBase<Series> {
     private:
-        const Series& parent;
+        Series& parent_;
 
     public:
-        IlocProxy(const Series& parent) : parent(parent) {}
+        IlocProxy(Series& parent_) : parent_(parent_) {}
 
-        view operator[](const nb::slice& nbSlice) const; // Declaration only
-
-        view operator[](slice<Eigen::Index>& overlay) const;
-
-        double operator[](Eigen::Index idx) const {
-            if (idx < 0 || idx >= parent.size()) {
-                throw std::out_of_range("Index out of range");
-            }
-            Eigen::Index combined_index = combine_slice_with_index(*parent.mask_, idx);
-            return (*parent.values_)(combined_index);
+        Series& parent() {
+            return parent_;
         }
 
-        // std::shared_ptr<SeriesView> operator[](Eigen::Index idx) const {
-        //     auto combined_slice = combine_slices(*parent.mask_, slice<Eigen::Index>(idx, idx + 1, 1), parent.values_->size());
-        //     return parent.create_view(std::make_shared<slice<Eigen::Index>>(combined_slice));
-        // }
+        using IlocBase<Series>::operator[];
+
+        double operator[](Eigen::Index idx) const {
+            Eigen::Index combined_index = combine_slice_with_index(*parent_.mask_, idx);
+            return (*parent_.values_)(combined_index);
+        }
     };
 
-    IlocProxy iloc() const {
+    IlocProxy iloc() {
         return IlocProxy(*this);
+    }
+
+    class LocProxy : public LocBase<Series> {
+    private:
+        Series& parent_;
+
+    public:
+        LocProxy(Series& parent_) : parent_(parent_) {}
+
+        Series& parent() {
+            return parent_;
+        }
+
+        using LocBase<Series>::operator[];
+
+        double operator[](const std::string& key) const {
+            int idx = parent_.index_->operator[](key);
+            return parent_.iloc()[idx];
+        }
+    };
+
+    LocProxy loc() {
+        return LocProxy(*this);
     }
 };
 
@@ -373,75 +454,17 @@ public:
         this->index_ = parent.index_->fast_init(mask_);
         LOG("Series::view constructed successfully with index: " << *this->index_);
     }
-
-
-    // const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const override {
-    const Eigen::VectorXd& values() const override {
-                
-        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
-            values_->data() + mask_->start, 
-            mask_->length(), 
-            Eigen::Stride<Eigen::Dynamic, 1>(mask_->step, 1)
-        );
-    }
-
-    // Eigen::Index length() const override {
-    //     return mask_->length();
-    // }
-
-    // std::string to_string() const {
-    //     std::ostringstream oss;
-    //     oss << *this;
-    //     return oss.str();
-    // }
-
-    // friend std::ostream& operator<<(std::ostream& os, const Series::view& view) {
-    //     try {
-    //         os << "Series::view with length: " << view.mask_->length() << "\n";
-    //         os << "Mask start: " << view.mask_->start << ", stop: " << view.mask_->stop << "\n";
-    //         // os << "Values: " << view.values() << "\n"; // Potentially recursive
-    //         os << "Index: " << *view.index_ << "\n"; // Ensure this does not cause recursion
-
-    //     } catch (const std::exception &e) {
-    //         os << "Error during stream output: " << e.what();
-    //     }
-    //     return os;
-    // }
-
-    // const ObjectIndex& index() const override {
-    //     std::vector<std::string> masked_keys;
-    //     for (Eigen::Index i = mask_->start; i < mask_->stop; i += mask_->step) {
-    //         masked_keys.push_back(index_->keys_[i]);
-    //     }
-    //     return ObjectIndex(masked_keys);
-    // }
 };
 
-Series::view Series::IlocProxy::operator[](const nb::slice& nbSlice) const {
-    auto [start, stop, step, slice_length] = nbSlice.compute(parent.values().size());
+// Series::view Series::head(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
+// }
 
-    std::cout << stop;
-    auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<Eigen::Index>(start), static_cast<Eigen::Index>(stop), static_cast<Eigen::Index>(step), parent.size());
-    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, *overlay));
-    std::cout << "Combined Mask " << combined_mask->start << " " << combined_mask->stop << "\n";
-    return Series::view(parent, combined_mask);
-};
+// Series::view Series::tail(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
+// }
 
-Series::view Series::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
-    overlay.normalize(parent.values().size());
-    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
-    return Series::view(parent, combined_mask);
-}
-
-Series::view Series::head(Eigen::Index n) const {
-    return iloc()[slice<Eigen::Index>(0, std::min(n, length()), 1)];
-}
-
-Series::view Series::tail(Eigen::Index n) const {
-    return iloc()[slice<Eigen::Index>(length() - std::min(n, length()), length(), 1)];
-}
-
-class DataFrame {
+class DataFrame : public Frame<DataFrame> {
 public:
     std::shared_ptr<MatrixXdRowMajor> values_;
     std::shared_ptr<ObjectIndex> index_;
@@ -450,7 +473,7 @@ public:
 
     DataFrame(const DataFrame& other,  std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-          index_(other.index_),
+          index_(other.index_->fast_init(mask)),
           columns_(other.columns_),
           mask_(mask) {}
 
@@ -459,24 +482,6 @@ public:
           index_(std::move(index)), 
           columns_(std::move(columns)), 
           mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
-
-    // DataFrame(nb::list values, nb::list index, nb::list columns)
-    //     : index_(std::make_shared<ObjectIndex>(index)),
-    //       columns_(std::make_shared<ColumnIndex>(columns)) {
-    //     Eigen::Index rows = static_cast<Eigen::Index>(values.size());
-    //     Eigen::Index cols = static_cast<Eigen::Index>(nb::cast<nb::list>(values[0]).size());
-
-    //     values_ = MatrixXdRowMajor(rows, cols);
-    //     for (Eigen::Index i = 0; i < rows; ++i) {
-    //         auto row = nb::cast<nb::list>(values[i]);
-    //         // Check that size row == cols
-    //         for (Eigen::Index j = 0; j < cols; ++j) {
-    //             values_(i, j) = nb::cast<double>(row[j]);
-    //         }
-    //     } 
-
-    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
-    // }
 
     DataFrame(nb::ndarray<> values, nb::list index, nb::list columns)
         : index_(std::make_shared<ObjectIndex>(index)),
@@ -488,65 +493,72 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
 
+    std::shared_ptr<slice<Eigen::Index>> mask() const {
+        return mask_;
+    }
+
     class view;
 
-    class IlocProxy {
+    class IlocProxy : IlocBase<DataFrame> {
     private:
-        const DataFrame& parent;
+        DataFrame& parent_;
 
     public:
-        IlocProxy(const DataFrame& parent) : parent(parent) {}
+        IlocProxy(DataFrame& parent_) : parent_(parent_) {}
 
-        view operator[](const nb::slice& nbSlice) const;
+        DataFrame& parent() {
+            return parent_;
+        }
 
-        view operator[](slice<Eigen::Index>& overlay) const;
+        using IlocBase<DataFrame>::operator[];
 
         Series operator[](Eigen::Index idx) const {
-            if (idx < 0 || idx >= parent.rows()) {
-                throw std::out_of_range("Index out of range");
-            }
-            Eigen::Index combined_index = combine_slice_with_index(*parent.mask_, idx);
-            auto row = std::make_shared<Eigen::VectorXd>(parent.values_->row(combined_index).transpose());
-            return Series(row, parent.columns_);
+            Eigen::Index combined_index = combine_slice_with_index(*parent_.mask_, idx);
+            auto row = std::make_shared<Eigen::VectorXd>(parent_.values_->row(combined_index));
+            return Series(row, parent_.columns_);
         }
     };
 
-
-    IlocProxy iloc() const {
+    IlocProxy iloc() {
         return IlocProxy(*this);
     }
 
-    class LocProxy {
+    class LocProxy : public LocBase<DataFrame> {
     private:
-        const DataFrame& parent;
+        DataFrame& parent_;
 
     public:
-        LocProxy(const DataFrame& parent) : parent(parent) {}
+        LocProxy(DataFrame& parent_) : parent_(parent_) {}
 
-        Series operator[](const std::string& key) const {
-            int idx = parent.index_->operator[](key);  // Use the overloaded [] operator
-            return parent.iloc()[idx];  // Access DataFrame's iloc, not ObjectIndex's
+        DataFrame& parent() {
+            return parent_;
+        }
+
+        using LocBase<DataFrame>::operator[];
+
+        Series operator[](const std::string& key) {
+            int idx = parent_.index_->operator[](key);
+            return parent().iloc()[idx];
         }
     };
 
-    LocProxy loc() const {
+    LocProxy loc() {
         return LocProxy(*this);
     }
 
     Eigen::Index rows() const {
-        return mask_->length();
+        return length();
     }
 
     Eigen::Index cols() const {
         return values_->cols();
     }
 
-    virtual Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> values() {
-        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
-            values_->data(), 
-            values_->rows(), 
-            values_->cols(),
-            Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(values_->cols(), 1)
+    virtual const Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>> values() const {
+        return Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1>>(
+            values_->data() + mask_->start, 
+            mask_->length(), 
+            Eigen::Stride<Eigen::Dynamic, 1>(1, 1)
         );
     }
 
@@ -559,9 +571,9 @@ public:
         return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
     }
 
-    view head(Eigen::Index n) const;
+    // view head(Eigen::Index n) const;
 
-    view tail(Eigen::Index n) const;
+    // view tail(Eigen::Index n) const;
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
         std::vector<std::string> rowNames = df.index_->keys();
@@ -631,63 +643,19 @@ public:
         this->index_ = parent.index_->fast_init(mask_);
     }
 
-    Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>> values() override {
-        LOG("Returning masked matrix from DataFrame::view");
-
-        Eigen::Index row_stride = mask_->step;
-        Eigen::Index start_row = mask_->start;
-        Eigen::Index row_length = mask_->length();
-        Eigen::Index cols = values_->cols();
-
-        LOG("start_row=" << start_row << ", row_length=" << row_length << ", row_stride=" << row_stride << ", cols=" << cols);
-
-        // // Check if the calculated row length is zero
-        // if (row_length == 0 || cols == 0) {
-        //     LOG("Returning an empty array due to zero row length or column count");
-        //     return Eigen::Map<MatrixXdRowMajor>(nullptr, 0, 0);
-        // }
-
-        // auto ma = Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
-        //     values_->data() + start_row * cols, // Pointer to the starting element
-        //     row_length,
-        //     cols,
-        //     stride
-        // );
-        // std::cout << ma;
-
-        return Eigen::Map<MatrixXdRowMajor, Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>(
-            values_->data() + start_row * cols, // Pointer to the starting element
-            row_length,
-            cols,
-            Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(mask_->step * cols, 1)
-        );
-    }
-
     // const ObjectIndex& index() const override {
     //     return *index_;
     // }
 };
 
-DataFrame::view DataFrame::IlocProxy::operator[](const nb::slice& nbSlice) const {
-    auto [start, stop, step, slice_length] = nbSlice.compute(parent.rows());
-    auto overlay = std::make_shared<slice<Eigen::Index>>(static_cast<Eigen::Index>(start), static_cast<Eigen::Index>(stop), static_cast<Eigen::Index>(step), parent.rows());
-    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, *overlay));
-    return DataFrame::view(parent, combined_mask);
-}
 
-DataFrame::view DataFrame::IlocProxy::operator[](slice<Eigen::Index>& overlay) const {
-    overlay.normalize(parent.rows());
-    auto combined_mask = std::make_shared<slice<Eigen::Index>>(combine_slices(*parent.mask_, overlay));
-    return DataFrame::view(parent, combined_mask);
-}
+// DataFrame::view DataFrame::head(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
+// }
 
-DataFrame::view DataFrame::head(Eigen::Index n) const {
-    return iloc()[slice<Eigen::Index>(0, std::min(n, rows()), 1)];
-}
-
-DataFrame::view DataFrame::tail(Eigen::Index n) const {
-    return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
-}
+// DataFrame::view DataFrame::tail(Eigen::Index n) const {
+//     return iloc()[slice<Eigen::Index>(rows() - std::min(n, rows()), rows(), 1)];
+// }
 
 
 NB_MODULE(cloth, m) {
@@ -707,17 +675,31 @@ NB_MODULE(cloth, m) {
         .def("fast_init", &ObjectIndex::fast_init)
         .def("keys", &ObjectIndex::keys)
         // .def("get_mask", &ObjectIndex::get_mask)
-        .def_rw("index", &ObjectIndex::keys_);
+        .def_rw("index", &ObjectIndex::keys_)
         // .def_rw("mask", &ObjectIndex::mask_);
+        .def("__getitem__", [](ObjectIndex& self, std::string& key) {
+            return self[key];
+        }, nb::is_operator());
 
     m.attr("ColumnIndex") = m.attr("ObjectIndex");
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
-        .def("__getitem__", [](const Series::IlocProxy &self, const nb::slice &nbSlice) {
-            return self[nbSlice];
-        }, nb::is_operator())
-        .def("__getitem__", [](const Series::IlocProxy &self, Eigen::Index idx) {
+        .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {
             return self[idx];
+        }, nb::is_operator())
+        .def("__getitem__", [](Series::IlocProxy& self, slice<Eigen::Index>& overlay) {
+            return self[overlay];
+        }, nb::is_operator())
+        .def("__getitem__", [](Series::IlocProxy& self, nb::slice& nbSlice) {
+            return self[nbSlice];
+        }, nb::is_operator());
+
+    nb::class_<Series::LocProxy>(m, "SeriesLocProxy")
+        .def("__getitem__", [](Series::LocProxy& self, const std::string& key) {
+            return self[key];
+        }, nb::is_operator())
+        .def("__getitem__", [](Series::LocProxy& self, nb::object& nbSlice) {
+            return self[nbSlice];
         }, nb::is_operator());
 
     nb::class_<Series>(m, "Series")
@@ -728,7 +710,6 @@ NB_MODULE(cloth, m) {
         .def("mean", &Series::mean)
         .def("min", &Series::min)
         .def("max", &Series::max)
-        // .def("get_row", &Series::get_row)
         .def("get_index", &Series::get_index)
         .def_prop_ro("values", &Series::values)
         .def("length", &Series::length)
@@ -736,6 +717,7 @@ NB_MODULE(cloth, m) {
             return *series.mask_;
         })
         .def_prop_ro("iloc", &Series::iloc)
+        .def_prop_ro("loc", &Series::loc)
         .def("head", &Series::head)
         .def("tail", &Series::tail);
 
@@ -750,11 +732,22 @@ NB_MODULE(cloth, m) {
         // .def("index", &Series::view::index);
 
     nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
-        .def("__getitem__", [](const DataFrame::IlocProxy &self, const nb::slice &nbSlice) {
-            return self[nbSlice];
-        }, nb::is_operator())
-        .def("__getitem__", [](const DataFrame::IlocProxy &self, Eigen::Index idx) {
+        .def("__getitem__", [](DataFrame::IlocProxy& self, Eigen::Index idx) {
             return self[idx];
+        }, nb::is_operator())
+        .def("__getitem__", [](DataFrame::IlocProxy& self, slice<Eigen::Index>& overlay) {
+            return self[overlay];
+        }, nb::is_operator())
+        .def("__getitem__", [](DataFrame::IlocProxy& self, nb::slice& nbSlice) {
+            return self[nbSlice];
+        }, nb::is_operator());
+
+    nb::class_<DataFrame::LocProxy>(m, "DataFrameLocProxy")
+        .def("__getitem__", [](DataFrame::LocProxy& self, const std::string& key) {
+            return self[key];
+        }, nb::is_operator())
+        .def("__getitem__", [](DataFrame::LocProxy& self, nb::object& nbSlice) {
+            return self[nbSlice];
         }, nb::is_operator());
 
     nb::class_<DataFrame>(m, "DataFrame")
@@ -762,8 +755,13 @@ NB_MODULE(cloth, m) {
         .def(nb::init<nb::ndarray<>, nb::list, nb::list>())
         .def_prop_ro("values", &DataFrame::values)
         .def_prop_ro("iloc", &DataFrame::iloc)
+        .def_prop_ro("loc", &DataFrame::loc)
         .def("__getitem__", &DataFrame::operator[], nb::is_operator())
         .def("__getattr__", &DataFrame::operator[], nb::is_operator())
+        .def("length", &DataFrame::length)
+        .def("rows", &DataFrame::rows)
+        .def("cols", &DataFrame::cols)
+        .def("__len__", &DataFrame::length)
         .def("head", &DataFrame::head)
         .def("tail", &DataFrame::tail);
 
