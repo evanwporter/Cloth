@@ -531,6 +531,11 @@ public:
     Eigen::Index cols() const {
         return values_->cols();
     }
+    
+    Series sum() const {
+        Eigen::VectorXd colSums = values().colwise().sum();
+        return Series(std::make_shared<Eigen::VectorXd>(colSums), columns_);
+    }
 
     const Eigen::Map<const MatrixXdRowMajor> values() const {
         return Eigen::Map<const MatrixXdRowMajor>(
@@ -550,8 +555,12 @@ public:
     }
 
     Series operator[](const std::string& colName) const {
-        return Series(std::make_shared<Eigen::VectorXd>(values_->col(columns_->index_.at(colName))), index_);
+        int colIndex = columns_->index_.at(colName);        
+        auto colValues = std::make_shared<Eigen::VectorXd>(values().col(colIndex));
+        return Series(colValues, index_->fast_init(mask_));
     }
+
+
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
         // Extract row and column names
