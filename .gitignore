@@ -1,13 +1,10 @@
-# build/
-html/
-latex/
-xml/
-.vscode/
-
+nanobind_test.egg-info
+_skbuild
+/dist
+__pycache__
+build
 *.pyd
-.ipynb_checkpoints/
+*.egg-info
 
-build/
-CMakeFiles/
-
-RoT.md
+/lib/googletest
+/CMakeFiles
