@@ -33,51 +33,51 @@
 #endif
 
 typedef uint64_t ns_time_t, us_time_t, ms_time_t;
-typedef uint32_t s_time_t, minutes_time_t;
+typedef uint32_t s_time_t, minutes_time_t, hours_time_t;
 typedef uint16_t days_time_t, weeks_time_t, month_time_t;
 typedef uint8_t years_time_t;
 
 #ifdef USE_NANOSECONDS
-    typedef uint64_t time_t;
+    typedef ns_time_t time_t;
     #define UNITS_PER_SECOND 1e9
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MICROSECONDS)
-    typedef uint64_t time_t;
+    typedef us_time_t time_t;
     #define UNITS_PER_SECOND 1e6
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MILLISECONDS)
-    typedef uint64_t time_t;
+    typedef ms_time_t time_t;
     #define UNITS_PER_SECOND 1e3
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_SECONDS)
-    typedef uint32_t time_t;
+    typedef s_time_t time_t;
     #define UNITS_PER_SECOND 1
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MINUTES)
-    typedef uint32_t time_t;
+    typedef minutes_time_t time_t;
     #define UNITS_PER_MINUTE 1
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_HOURS)
-    typedef uint32_t time_t;
+    typedef hours_time_t time_t;
     #define UNITS_PER_HOUR 1
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_DAYS)
-    typedef uint16_t time_t;
+    typedef days_time_t time_t;
     #define UNITS_PER_DAY 1
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #endif
@@ -107,7 +107,6 @@ namespace TimeConstants {
     }
 };
 
-// Forward declaration for the iso_datetime64 function
 time_t iso_to_time_units(const std::string& iso_time);
 
 class Timedelta64;
@@ -117,7 +116,6 @@ private:
     time_t data_;
 
 public:
-
     Datetime64(time_t data) : data_(data) {}
 
     // ISO 8601 formatted string constructor
@@ -181,6 +179,10 @@ public:
         }
         return month_count;
     }
+
+    inline Datetime64 operator+(const Timedelta64 &delta) const;
+    inline Datetime64 operator-(const Timedelta64 &delta) const;
+    inline Timedelta64 operator-(const Datetime64 &other) const;
 };
 
 class Timedelta64 {
@@ -198,6 +200,7 @@ public:
     }
 };
 
+// Definitions of the overloaded operators for Datetime64
 inline Datetime64 Datetime64::operator+(const Timedelta64 &delta) const {
     return Datetime64(data_ + delta.data_);
 }
@@ -210,10 +213,11 @@ inline Timedelta64 Datetime64::operator-(const Datetime64 &other) const {
     return Timedelta64(data_ - other.data_);
 }
 
+// Function to convert ISO string to data_ since epoch
 time_t iso_to_time_units(const std::string& iso_time) {
     std::tm t = {};
     std::istringstream ss(iso_time);
-    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M:%S");
+    ss >> std::get_time(&t, "%Y-%m-%dT%H:%M");
 
     if (ss.fail()) {
         throw std::invalid_argument("Invalid ISO format");
@@ -221,10 +225,12 @@ time_t iso_to_time_units(const std::string& iso_time) {
 
     time_t total_units = 0;
 
+    // Calculate data_ for the years since 1970
     for (int32_t year = 1970; year < t.tm_year + 1900; ++year) {
         total_units += TimeConstants::days_in_year(year) * UNITS_PER_DAY;
     }
 
+    // Calculate data_ for the months in the current year
     for (int16_t month = 0; month < t.tm_mon; ++month) {
         if (TimeConstants::is_leap_year(t.tm_year + 1900)) {
             total_units += TimeConstants::UNITS_PER_MONTH_LEAP(month);
@@ -233,43 +239,10 @@ time_t iso_to_time_units(const std::string& iso_time) {
         }
     }
 
+    // Add data_ for the days, hours, minutes
     total_units += (t.tm_mday - 1) * UNITS_PER_DAY;
-
-    #ifdef USE_HOURS
     total_units += t.tm_hour * UNITS_PER_HOUR;
-    #endif
-
-    #ifdef USE_MINUTES
     total_units += t.tm_min * UNITS_PER_MINUTE;
-    #endif
-
-    #ifdef USE_SECONDS
-    total_units += t.tm_sec * UNITS_PER_SECOND;
-    #endif
-
-    #ifdef USE_MILLISECONDS
-    size_t dot_pos = iso_time.find('.');
-    if (dot_pos != std::string::npos && iso_time.length() > dot_pos + 3) {
-        int milliseconds = std::stoi(iso_time.substr(dot_pos + 1, 3));
-        total_units += milliseconds * (UNITS_PER_SECOND / 1000);
-    }
-    #endif
-
-    #ifdef USE_MICROSECONDS
-    size_t micro_pos = iso_time.find_first_of("0123456789", dot_pos + 4);
-    if (micro_pos != std::string::npos && iso_time.length() > micro_pos + 2) {
-        int microseconds = std::stoi(iso_time.substr(micro_pos, 3));
-        total_units += microseconds * (UNITS_PER_SECOND / 1000000);
-    }
-    #endif
-
-    #ifdef USE_NANOSECONDS
-    size_t nano_pos = iso_time.find_first_of("0123456789", micro_pos + 4);
-    if (nano_pos != std::string::npos && iso_time.length() > nano_pos + 2) {
-        int nanoseconds = std::stoi(iso_time.substr(nano_pos, 3));
-        total_units += nanoseconds * (UNITS_PER_SECOND / 1000000000);
-    }
-    #endif
 
     return total_units;
 }

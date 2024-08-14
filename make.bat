@@ -18,9 +18,10 @@ echo Usage: make.bat [clean|package|build|html|profile [profile_file]]
 goto end
 
 :clean
-echo Deleting all .c and .pyd files from the Sloth directory and its subdirectories...
-@REM del /s /q "Sloth\*.c"
-@REM del /s /q "Sloth\*.pyd"
+echo Deleting all .ilk, obj and .pdb files from the Cloth directory...
+del /s /q "Cloth\src\*.ilk"
+del /s /q "Cloth\src\*.obj"
+del /s /q "Cloth\src\*.pdb"
 
 echo Removing the build directory...
 rmdir /s /q "build"
