@@ -37,9 +37,9 @@ def test_slice_zero_step():
 #     combined_index = cloth.combine_slice_with_index(sl1, index)
 #     assert combined_index == 6
 
-def test_object_index():
+def test_string_index():
     keys = ["a", "b", "c", "d"]
-    obj_index = cloth.ObjectIndex(keys)
+    obj_index = cloth.StringIndex(keys)
     assert obj_index.keys() == keys
     assert obj_index["a"] == 0
     assert obj_index["d"] == 3

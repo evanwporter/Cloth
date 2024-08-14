@@ -6,9 +6,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/lib",
                 "${vcpkgRoot}/x64-windows/include",
-                "C:\\Users\\evanw\\miniconda3\\include",
-                "C:\\Users\\evanw\\miniconda3\\Lib\\site-packages\\nanobind\\include\\nanobind",
-                // "C:\\Users\\evanw\\Cloth\\lib\\catch_amalgamated.hpp"
+                "C:/Users/evanw/miniconda3/include",
+                "C:/Users/evanw/miniconda3/Lib/site-packages/nanobind/include/nanobind/**"
             ],
             "defines": [
                 "_DEBUG",

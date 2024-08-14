@@ -5,7 +5,7 @@
 #include <string>
 #include <Eigen/Dense>
 
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> readCSVToEigen(const std::string& filename) {
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> read_csv(const std::string& filename) {
     std::vector<std::string> index;
     std::vector<std::string> headers;
     std::vector<double> data;

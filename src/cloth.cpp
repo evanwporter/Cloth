@@ -22,6 +22,7 @@
 
 #include <Eigen/Dense>
 #include "../lib/robinhood.h"
+#include "read_csv.h"
 
 namespace nb = nanobind;
 using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
@@ -94,65 +95,61 @@ public:
     virtual ~Index_() = default;
 };
 
-class ObjectIndex : public Index_ {
+class StringIndex : public Index_ {
 public:
-    robin_hood::unordered_map<std::string, int> index_;
-    std::vector<std::string> keys_;
+    std::shared_ptr<robin_hood::unordered_map<std::string, int>> index_;
+    std::shared_ptr<std::vector<std::string>> keys_;
     std::shared_ptr<mask_t> mask_;
 
-    ObjectIndex(robin_hood::unordered_map<std::string, int> index, std::vector<std::string> keys)
+    StringIndex(std::shared_ptr<robin_hood::unordered_map<std::string, int>> index, std::shared_ptr<std::vector<std::string>> keys)
         : index_(std::move(index)), keys_(std::move(keys)), 
-          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_.size()), 1)) {}
+          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
 
-    explicit ObjectIndex(std::vector<std::string> keys)
-        : keys_(std::move(keys)) {
-        for (size_t i = 0; i < this->keys_.size(); ++i) {
-            index_[this->keys_[i]] = static_cast<int>(i);
+    StringIndex(std::shared_ptr<StringIndex> other, std::shared_ptr<mask_t> mask)
+        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+
+    explicit StringIndex(std::vector<std::string> keys)
+        : keys_(std::make_shared<std::vector<std::string>>(std::move(keys))),
+          index_(std::make_shared<robin_hood::unordered_map<std::string, int>>()) {
+        for (size_t i = 0; i < this->keys_->size(); ++i) {
+            (*index_)[(*this->keys_)[i]] = static_cast<int>(i);
         }
-        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_.size()), 1);
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
     }
 
-    explicit ObjectIndex(nb::list keys) {
-        keys_.reserve(keys.size());
+    explicit StringIndex(nb::list keys)
+        : keys_(std::make_shared<std::vector<std::string>>()), 
+          index_(std::make_shared<robin_hood::unordered_map<std::string, int>>()) {
+        keys_->reserve(keys.size());
         for (size_t i = 0; i < keys.size(); ++i) {
-            keys_.push_back(std::move(nb::cast<std::string>(keys[i])));
-            index_[keys_.back()] = static_cast<int>(i);
+            keys_->push_back(std::move(nb::cast<std::string>(keys[i])));
+            (*index_)[keys_->back()] = static_cast<int>(i);
         }
-        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_.size()), 1);
-    }
-
-    std::shared_ptr<ObjectIndex> fast_init(std::shared_ptr<mask_t> mask) const {
-        auto new_index = std::make_shared<ObjectIndex>(*this);
-        new_index->mask_ = std::move(mask);
-        return new_index;
-    }
-
-    Eigen::Index length() const {
-        return mask_->length();
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
     }
 
     std::vector<std::string> keys() const {
         std::vector<std::string> result;
         result.reserve(length());
         for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
-            result.push_back(keys_[i]);
+            result.push_back((*keys_)[i]);
         }
         return result;
     }
 
     std::string operator[](Eigen::Index idx) const {
-        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_.size())) {
+        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
             throw std::out_of_range("Index out of range");
         }
-        return keys_[combine_slice_with_index(*mask_, idx)];
+        return (*keys_)[combine_slice_with_index(*mask_, idx)];
     }
 
     int operator[](const std::string& key) const {
-        return index_.at(key);
+        return index_->at(key);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const ObjectIndex& objIndex) {
-        auto k = objIndex.keys();
+    friend std::ostream& operator<<(std::ostream& os, const StringIndex& strIndex) {
+        auto k = strIndex.keys();
         os << "[";
         for (size_t i = 0; i < k.size(); ++i) {
             os << k[i];
@@ -163,9 +160,15 @@ public:
         os << "]";
         return os;
     }
+
+    Eigen::Index length() const {
+        return mask_->length();
+    }
 };
 
-using ColumnIndex = ObjectIndex;
+
+
+using ColumnIndex = StringIndex;
 
 template <typename Derived>
 class IlocBase {
@@ -261,24 +264,25 @@ public:
 class Series : public Frame<Series> {
 public:
     std::shared_ptr<Eigen::VectorXd> values_;
-    std::shared_ptr<ObjectIndex> index_;
+    std::shared_ptr<StringIndex> index_;
     std::string name_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
           
-    Series(const Series& other,  std::shared_ptr<slice<Eigen::Index>> mask)
+    Series(const Series& other, std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-          index_(other.index_->fast_init(mask)),
-          name_(other.name_),
-          mask_(std::move(mask)) {}
+        index_(std::make_shared<StringIndex>(other.index_, mask)),
+        name_(other.name_),
+        mask_(std::move(mask)) {}
 
-    Series(std::shared_ptr<Eigen::VectorXd> values, std::shared_ptr<ObjectIndex> index)
+
+    Series(std::shared_ptr<Eigen::VectorXd> values, std::shared_ptr<StringIndex> index)
         : values_(std::move(values)), 
           index_(std::move(index)) 
     {
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1); 
     }
 
-    Series(const Eigen::VectorXd &values, std::shared_ptr<ObjectIndex> index)
+    Series(const Eigen::VectorXd &values, std::shared_ptr<StringIndex> index)
         : values_(std::make_shared<Eigen::VectorXd>(values)), 
           index_(std::move(index)) 
     {
@@ -287,7 +291,7 @@ public:
 
     Series(nb::ndarray<double> values, nb::list index)
         : values_(std::make_shared<Eigen::VectorXd>(Eigen::Map<const Eigen::VectorXd>(values.data(), values.size()))),
-          index_(std::make_shared<ObjectIndex>(index))
+          index_(std::make_shared<StringIndex>(index))
     {
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
     }
@@ -337,7 +341,7 @@ public:
         return values();
     }
 
-    const ObjectIndex& index() const {
+    const StringIndex& index() const {
         return *index_;
     }
 
@@ -391,7 +395,7 @@ public:
         try {
             Eigen::Index len = series.length();
             for (Eigen::Index i = 0; i < len; ++i) {
-                std::string index_value = series.index_->keys_[series.mask_->start + i * series.mask_->step];
+                std::string index_value = series.index_->keys_->operator[](series.mask_->start + i * series.mask_->step);
                 double series_value = (*series.values_)(series.mask_->start + i * series.mask_->step);
                 os << index_value << "    " << series_value << "\n";
             }
@@ -406,29 +410,32 @@ public:
 
         return os;
     }
+
+
 };
 
 class DataFrame : public Frame<DataFrame> {
 public:
     std::shared_ptr<MatrixXdRowMajor> values_;
-    std::shared_ptr<ObjectIndex> index_;
+    std::shared_ptr<StringIndex> index_;
     std::shared_ptr<ColumnIndex> columns_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
 
-    DataFrame(const DataFrame& other,  std::shared_ptr<slice<Eigen::Index>> mask)
+    DataFrame(const DataFrame& other, std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-          index_(other.index_->fast_init(mask)),
-          columns_(other.columns_),
-          mask_(std::move(mask)) {}
+        index_(std::make_shared<StringIndex>(other.index_, mask)),
+        columns_(other.columns_),
+        mask_(std::move(mask)) {}
 
-    DataFrame(std::shared_ptr<MatrixXdRowMajor> values, std::shared_ptr<ObjectIndex> index, std::shared_ptr<ColumnIndex> columns)
+
+    DataFrame(std::shared_ptr<MatrixXdRowMajor> values, std::shared_ptr<StringIndex> index, std::shared_ptr<ColumnIndex> columns)
         : values_(std::move(values)), 
           index_(std::move(index)), 
           columns_(std::move(columns)), 
           mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
 
     DataFrame(nb::ndarray<> values, nb::list index, nb::list columns)
-        : index_(std::make_shared<ObjectIndex>(index)),
+        : index_(std::make_shared<StringIndex>(index)),
           columns_(std::make_shared<ColumnIndex>(columns)) {
         Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
         Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
@@ -509,18 +516,18 @@ public:
         );
     }
 
-    const ObjectIndex& index() const {
+    const StringIndex& index() const {
         return *index_;
     }
 
-    const ObjectIndex& columns() const {
+    const StringIndex& columns() const {
         return *columns_;
     }
 
     Series operator[](const std::string& colName) const {
-        int colIndex = columns_->index_.at(colName);        
+        int colIndex = columns_->index_->at(colName);        
         auto colValues = std::make_shared<Eigen::VectorXd>(values().col(colIndex));
-        return Series(colValues, index_->fast_init(mask_));
+        return Series(colValues, index_);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
@@ -569,6 +576,8 @@ public:
 };
 
 NB_MODULE(cloth, m) {
+    m.def("read_csv", &read_csv);
+
     nb::class_<slice<Eigen::Index>>(m, "slice")
         .def(nb::init<int, int, int>())
         .def("normalize", &slice<Eigen::Index>::normalize)
@@ -580,19 +589,18 @@ NB_MODULE(cloth, m) {
 
     nb::class_<Index_>(m, "Index_");
 
-    nb::class_<ObjectIndex, Index_>(m, "ObjectIndex")
+    nb::class_<StringIndex, Index_>(m, "StringIndex")
         .def(nb::init<std::vector<std::string>>()) 
-        .def("fast_init", &ObjectIndex::fast_init)
-        .def("keys", &ObjectIndex::keys)
-        .def_rw("index", &ObjectIndex::keys_)
-        .def("__getitem__", [](ObjectIndex& self, std::string& key) {
+        .def("keys", &StringIndex::keys)
+        .def_rw("index", &StringIndex::keys_)
+        .def("__getitem__", [](StringIndex& self, std::string& key) {
             return self[key];
         }, nb::is_operator())
         .def_prop_ro("mask", [](const DataFrame &df) {
             return *df.mask();
         });
 
-    m.attr("ColumnIndex") = m.attr("ObjectIndex");
+    m.attr("ColumnIndex") = m.attr("StringIndex");
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {
@@ -614,7 +622,7 @@ NB_MODULE(cloth, m) {
         }, nb::is_operator());
 
     nb::class_<Series>(m, "Series")
-        .def(nb::init<Eigen::VectorXd, std::shared_ptr<ObjectIndex>>())
+        .def(nb::init<Eigen::VectorXd, std::shared_ptr<StringIndex>>())
         .def(nb::init<nb::ndarray<double>, nb::list>())
         .def("__repr__", &Series::to_string)
         .def("sum", &Series::sum)
