@@ -38,46 +38,46 @@ typedef uint16_t days_time_t, weeks_time_t, month_time_t;
 typedef uint8_t years_time_t;
 
 #ifdef USE_NANOSECONDS
-    typedef uint64_t time_t;
+    typedef uint64_t dtime_t;
     #define UNITS_PER_SECOND 1e9
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MICROSECONDS)
-    typedef uint64_t time_t;
+    typedef uint64_t dtime_t;
     #define UNITS_PER_SECOND 1e6
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MILLISECONDS)
-    typedef uint64_t time_t;
+    typedef uint64_t dtime_t;
     #define UNITS_PER_SECOND 1e3
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_SECONDS)
-    typedef uint32_t time_t;
+    typedef uint32_t dtime_t;
     #define UNITS_PER_SECOND 1
     #define UNITS_PER_MINUTE (60 * UNITS_PER_SECOND)
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_MINUTES)
-    typedef uint32_t time_t;
+    typedef uint32_t dtime_t;
     #define UNITS_PER_MINUTE 1
     #define UNITS_PER_HOUR (60 * UNITS_PER_MINUTE)
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_HOURS)
-    typedef uint32_t time_t;
+    typedef uint32_t dtime_t;
     #define UNITS_PER_HOUR 1
     #define UNITS_PER_DAY (24 * UNITS_PER_HOUR)
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #elif defined(USE_DAYS)
-    typedef uint16_t time_t;
+    typedef uint16_t dtime_t;
     #define UNITS_PER_DAY 1
     #define UNITS_PER_WEEK (7 * UNITS_PER_DAY)
 #endif
@@ -90,11 +90,11 @@ namespace TimeConstants {
     constexpr int16_t DAYS_IN_MONTH_COMMON[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
     constexpr int16_t DAYS_IN_MONTH_LEAP[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-    constexpr time_t UNITS_PER_MONTH_COMMON(int month) {
+    constexpr dtime_t UNITS_PER_MONTH_COMMON(int month) {
         return DAYS_IN_MONTH_COMMON[month] * UNITS_PER_DAY;
     }
 
-    constexpr time_t UNITS_PER_MONTH_LEAP(int month) {
+    constexpr dtime_t UNITS_PER_MONTH_LEAP(int month) {
         return DAYS_IN_MONTH_LEAP[month] * UNITS_PER_DAY;
     }
 
@@ -108,17 +108,17 @@ namespace TimeConstants {
 };
 
 // Forward declaration for the iso_datetime64 function
-time_t iso_to_time_units(const std::string& iso_time);
+dtime_t iso_to_time_units(const std::string& iso_time);
 
 class Timedelta64;
 
 class Datetime64 {
 private:
-    time_t data_;
+    dtime_t data_;
 
 public:
 
-    Datetime64(time_t data) : data_(data) {}
+    Datetime64(dtime_t data) : data_(data) {}
 
     // ISO 8601 formatted string constructor
     Datetime64(const std::string& iso_time) : data_(iso_to_time_units(iso_time)) {}
@@ -135,12 +135,12 @@ public:
     int64_t weeks() const { return data_ / UNITS_PER_WEEK; }
 
     int64_t years(int32_t start_year) const {
-        time_t total_units = data_;
+        dtime_t total_units = data_;
         int32_t year_counter = start_year;
         int64_t year_count = 0;
 
         while (total_units > 0) {
-            time_t units_per_year = TimeConstants::is_leap_year(year_counter) ?
+            dtime_t units_per_year = TimeConstants::is_leap_year(year_counter) ?
                                       TimeConstants::DAYS_PER_LEAP_YEAR * UNITS_PER_DAY :
                                       TimeConstants::DAYS_PER_COMMON_YEAR * UNITS_PER_DAY;
 
@@ -156,13 +156,13 @@ public:
     }
 
     int64_t months(int32_t start_year, int16_t start_month) const {
-        time_t total_units = data_;
+        dtime_t total_units = data_;
         int32_t year_counter = start_year;
         int16_t month_counter = start_month;
         int64_t month_count = 0;
 
         while (total_units > 0) {
-            time_t units_per_month = TimeConstants::is_leap_year(year_counter) ?
+            dtime_t units_per_month = TimeConstants::is_leap_year(year_counter) ?
                                        TimeConstants::UNITS_PER_MONTH_LEAP(month_counter) :
                                        TimeConstants::UNITS_PER_MONTH_COMMON(month_counter);
 
@@ -185,9 +185,9 @@ public:
 
 class Timedelta64 {
 public:
-    time_t data_;
+    dtime_t data_;
 
-    Timedelta64(time_t units = 0) : data_(units) {}
+    Timedelta64(dtime_t units = 0) : data_(units) {}
 
     Timedelta64 operator+(const Timedelta64 &other) const {
         return Timedelta64(data_ + other.data_);
@@ -210,7 +210,7 @@ inline Timedelta64 Datetime64::operator-(const Datetime64 &other) const {
     return Timedelta64(data_ - other.data_);
 }
 
-time_t iso_to_time_units(const std::string& iso_time) {
+dtime_t iso_to_time_units(const std::string& iso_time) {
     std::tm t = {};
     std::istringstream ss(iso_time);
     ss >> std::get_time(&t, "%Y-%m-%dT%H:%M:%S");
@@ -219,7 +219,7 @@ time_t iso_to_time_units(const std::string& iso_time) {
         throw std::invalid_argument("Invalid ISO format");
     }
 
-    time_t total_units = 0;
+    dtime_t total_units = 0;
 
     for (int32_t year = 1970; year < t.tm_year + 1900; ++year) {
         total_units += TimeConstants::days_in_year(year) * UNITS_PER_DAY;
