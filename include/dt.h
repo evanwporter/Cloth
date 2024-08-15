@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <functional>
+
 
 //#define USE_NANOSECONDS
 //#define USE_MICROSECONDS
@@ -181,6 +183,31 @@ public:
         }
         return month_count;
     }
+
+    bool operator==(const Datetime64& other) const {
+        return data_ == other.data_;
+    }
+
+    bool operator!=(const Datetime64& other) const {
+        return data_ != other.data_;
+    }
+
+    bool operator<(const Datetime64& other) const {
+        return data_ < other.data_;
+    }
+
+    bool operator<=(const Datetime64& other) const {
+        return data_ <= other.data_;
+    }
+
+    bool operator>(const Datetime64& other) const {
+        return data_ > other.data_;
+    }
+
+    bool operator>=(const Datetime64& other) const {
+        return data_ >= other.data_;
+    }
+
 };
 
 class Timedelta64 {
@@ -273,5 +300,15 @@ dtime_t iso_to_time_units(const std::string& iso_time) {
 
     return total_units;
 }
+
+namespace std {
+    template<>
+    struct hash<Datetime64> {
+        std::size_t operator()(const Datetime64& dt) const noexcept {
+            return std::hash<time_t>{}(dt.seconds());
+        }
+    };
+}
+
 
 #endif // DATETIME64_H

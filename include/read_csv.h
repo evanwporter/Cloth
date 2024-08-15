@@ -1,3 +1,6 @@
+#ifndef READ_CSV_H
+#define READ_CSV_H
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -68,3 +71,5 @@ Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> read_csv(
     
     return mat;
 }
+
+#endif

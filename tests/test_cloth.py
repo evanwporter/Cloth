@@ -145,5 +145,35 @@ def test_dataframe_loc():
     assert sliced_df.rows() == 3
     assert sliced_df["col1"].sum() == 15.0
 
+def test_datetime64():
+    dt = cloth.Datetime64("2023-08-14T15:23:45")
+    assert dt.seconds() == 1692024225 
+    assert dt.days() > 0 
+
+    delta = cloth.Timedelta64(3600)
+    dt_plus_delta = dt + delta
+    assert dt_plus_delta.seconds() == dt.seconds() + 3600
+
+    dt_minus_delta = dt - delta
+    assert dt_minus_delta.seconds() == dt.seconds() - 3600
+
+    dt2 = cloth.Datetime64("2023-08-14T16:23:45")
+    delta_dt = dt2 - dt
+    assert delta_dt.data_ == 3600  
+
+def test_datetime_index():
+    iso_dates = ["2023-08-14T15:23:45", "2023-08-15T16:24:50", "2023-08-16T17:25:55"]
+    dt_index = cloth.DateTimeIndex(iso_dates)
+    
+    assert dt_index.keys()[0].seconds() == 1692024225 
+    assert dt_index.keys()[1].seconds() > 1692024225  
+    assert dt_index.keys()[2].seconds() > dt_index.keys()[1].seconds()
+
+    dt0 = dt_index[0]
+    assert dt0.seconds() == 1692024225
+
+    dt1 = cloth.Datetime64("2023-08-15T16:24:50")
+    assert dt_index[dt1] == 1  
+
 if __name__ == "__main__":
     pytest.main()

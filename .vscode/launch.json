@@ -10,7 +10,7 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "preLaunchTask": "Build Tests",
+            "preLaunchTask": "Build File",
             "internalConsoleOptions": "openOnSessionStart",
         }
     ]

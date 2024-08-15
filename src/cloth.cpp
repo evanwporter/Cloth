@@ -19,75 +19,24 @@
 #include <numeric>
 #include <iomanip>
 #include <iostream>
+#include <cmath>
 
 #include <Eigen/Dense>
 #include "../lib/robinhood.h"
-#include "read_csv.h"
+#include "../include/read_csv.h"
+#include "../include/dt.h"
+#include "../include/slice.h"
+#include "../include/digitize.h"
+
 
 namespace nb = nanobind;
 using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
-template <typename T = Eigen::Index>
-struct slice {
-    T start, stop;
-    int step;
-
-    slice(T start_, T stop_, int step_) 
-        : start(start_), stop(stop_), step(step_) {
-        if (step == 0) throw std::invalid_argument("Step cannot be zero");
-        LOG("Creating slice with start=" << start << ", stop=" << stop << ", step=" << step);
-    }
-
-    slice(T start_, T stop_, int step_, Eigen::Index length) 
-        : slice(start_, stop_, step_) {
-        normalize(length);
-    }
-
-    void normalize(Eigen::Index length) {
-        if (start < 0) start += length;
-        if (stop < 0) stop += length;
-        if (start < 0) start = 0;
-        if (stop > length) stop = length;
-        LOG("Normalized slice to start=" << start << ", stop=" << stop << ", step=" << step);
-    }
-
-    Eigen::Index length() const {
-        return (step > 0) ? (stop - start + step - 1) / step : (start - stop - step + 1) / (-step);
-    }
-
-    T get_start() const { return start; }
-    T get_stop() const { return stop; }
-    int get_step() const { return step; }
-
-    friend std::ostream& operator<<(std::ostream& os, const slice& sl) {
-        os << "slice(" << sl.start << ", " << sl.stop << ", " << sl.step << ")";
-        return os;
-    }
-
-    std::string to_string() const {
-        std::ostringstream oss;
-        oss << *this;
-        return oss.str();
-    }
-};
-
-template <typename T = Eigen::Index>
-slice<T> combine_slices(const slice<T>& mask, const slice<T>& overlay) {
-    int start = mask.start + (overlay.start * mask.step);
-    int stop = mask.start + (overlay.stop * mask.step);
-    int step = mask.step * overlay.step;
-    return slice<T>(start, stop, step);
-}
-
-template <typename T = Eigen::Index>
-T combine_slice_with_index(const slice<T>& mask, T index) {
-    if (index < 0 || index >= mask.length()) {
-        throw std::out_of_range("Index is out of bounds of the mask slice. Be sure to normalize slice first.");
-    }
-    return mask.start + (index * mask.step);
-}
-
+#ifndef INDEX_T
+#define INDEX_T
 using index_t = Eigen::Index;
+#endif
+
 using mask_t = slice<index_t>;
 
 class Index_ {
@@ -166,9 +115,94 @@ public:
     }
 };
 
-
-
 using ColumnIndex = StringIndex;
+
+class DateTimeIndex : public Index_ {
+public:
+    std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
+    std::shared_ptr<std::vector<Datetime64>> keys_;
+    std::shared_ptr<mask_t> mask_;
+
+    
+    DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
+        : index_(std::move(index)), keys_(std::move(keys)), 
+          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
+
+    
+    DateTimeIndex(std::shared_ptr<DateTimeIndex> other, std::shared_ptr<mask_t> mask)
+        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+
+    
+    explicit DateTimeIndex(std::vector<std::string> iso_keys)
+        : keys_(std::make_shared<std::vector<Datetime64>>()),
+          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+
+        for (size_t i = 0; i < iso_keys.size(); ++i) {
+            Datetime64 dt(iso_keys[i]);
+            keys_->push_back(dt);
+            (*index_)[dt] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
+    }
+
+    
+    explicit DateTimeIndex(nb::list iso_keys)
+        : keys_(std::make_shared<std::vector<Datetime64>>()), 
+          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+
+        keys_->reserve(iso_keys.size());
+        for (size_t i = 0; i < iso_keys.size(); ++i) {
+            std::string iso_key = nb::cast<std::string>(iso_keys[i]);
+            Datetime64 dt(iso_key);
+            keys_->push_back(dt);
+            (*index_)[dt] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
+    }
+
+    
+    std::vector<Datetime64> keys() const {
+        std::vector<Datetime64> result;
+        result.reserve(length());
+        for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
+            result.push_back((*keys_)[i]);
+        }
+        return result;
+    }
+
+    
+    Datetime64 operator[](Eigen::Index idx) const {
+        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
+            throw std::out_of_range("Index out of range");
+        }
+        return (*keys_)[combine_slice_with_index(*mask_, idx)];
+    }
+
+    
+    int operator[](const Datetime64& key) const {
+        return index_->at(key);
+    }
+
+    
+    friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
+        auto k = dtIndex.keys();
+        os << "[";
+        for (size_t i = 0; i < k.size(); ++i) {
+            os << k[i].seconds();  
+            if (i < k.size() - 1) {
+                os << ", ";
+            }
+        }
+        os << "]";
+        return os;
+    }
+
+    
+    Eigen::Index length() const {
+        return mask_->length();
+    }
+};
+
 
 template <typename Derived>
 class IlocBase {
@@ -575,6 +609,20 @@ public:
     }
 };
 
+// class Resampler {
+//     std::shared_ptr<DateTimeIndex> index_;
+//     Timedelta64 freq;
+
+//     void _resample() {
+//         slice<Datetime64> bins(
+//             std::ceil(index_->keys().front() / freq) * freq,
+//             std::ceil(index_->keys().back() / freq) * freq,
+//             freq
+//         );
+//         digitize(index_->keys(), bins)
+//     };
+// };
+
 NB_MODULE(cloth, m) {
     m.def("read_csv", &read_csv);
 
@@ -601,6 +649,57 @@ NB_MODULE(cloth, m) {
         });
 
     m.attr("ColumnIndex") = m.attr("StringIndex");
+
+    nb::class_<Datetime64>(m, "Datetime64")
+        // .def(nb::init<dtime_t>())  
+        .def(nb::init<const std::string&>())  
+        .def("__add__", &Datetime64::operator+)    
+        .def("seconds", &Datetime64::seconds)  
+        .def("minutes", &Datetime64::minutes)  
+        .def("hours", &Datetime64::hours)  
+        .def("days", &Datetime64::days)  
+        .def("weeks", &Datetime64::weeks)  
+        .def("years", &Datetime64::years)  
+        .def("months", &Datetime64::months)  
+        .def("__repr__", [](const Datetime64& self) {
+            std::ostringstream oss;
+            oss << "Datetime64(" << self.seconds() << ")";
+            return oss.str();
+        }); 
+
+    
+    // nb::class_<Timedelta64>(m, "Timedelta64")
+    //     // .def(nb::init<dtime_t>())  
+    //     .def("__add__", &Timedelta64::operator+)  
+    //     .def("__sub__", &Timedelta64::operator-)  
+    //     .def("__repr__", [](const Timedelta64& self) {
+    //         std::ostringstream oss;
+    //         oss << "Timedelta64(" << self.data_ << ")";
+    //         return oss.str();
+    //     });  
+
+    
+    nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
+        .def(nb::init<std::vector<std::string>>())  
+        .def(nb::init<nb::list>())  
+        .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
+            return self[idx];
+        }, nb::is_operator())  
+        .def("__getitem__", [](DateTimeIndex& self, const Datetime64& key) {
+            return self[key];
+        }, nb::is_operator())  
+        .def("keys", &DateTimeIndex::keys)  
+        .def("__repr__", [](const DateTimeIndex& self) {
+            std::ostringstream oss;
+            oss << "DateTimeIndex(";
+            auto keys = self.keys();
+            for (size_t i = 0; i < keys.size(); ++i) {
+                oss << keys[i].seconds();
+                if (i < keys.size() - 1) oss << ", ";
+            }
+            oss << ")";
+            return oss.str();
+        });  
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {
