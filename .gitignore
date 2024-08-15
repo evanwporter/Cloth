@@ -10,5 +10,8 @@ build
 /lib/googletest
 /lib/nanobind
 
+/.ipynb_checkpoints
+/.pytest_cache
+
 
 /CMakeFiles
