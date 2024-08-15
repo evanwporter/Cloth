@@ -4,34 +4,35 @@
 * ~~Add head and tail function~~
 * ~~Pretty Print Table~~
 * Clean up the code
-    * Add/remove `const` from places (I think I've been overly liberal here)
+    * There is always more room for cleaning
+    * ~~Add/remove `const` from places (I think I've been overly liberal here)~~
 * Create util section
 * Give C++ functions better names
-* Indexing Function
-    * DataFrame
-        * Integer Row Indexing (iloc)
+* ~~Indexing Function~~
+    * ~~DataFrame~~
+        * ~~Integer Row Indexing (iloc)~~
             * ~~Slice~~
             * ~~Int~~
-        * Keyword Row Indexing (loc)
-            * Slice
+        * ~~Keyword Row Indexing (loc)~~
+            * ~~Slice~~
             * ~~Keyword~~
-        * Column Indexing
-            * `__getitem__`
+        * ~~Column Indexing~~
+            * ~~`__getitem__`~~
                 * ~~Keyword~~
             * ~~`__getattr__`~~
                 * ~~Keyword~~
-    * Series
-        * Integer Row Indexing (iloc)
+    * ~~Series~~
+        * ~~Integer Row Indexing (iloc)~~
             * ~~Slice~~
             * ~~Int~~
-        * Keyword Row Indexing (loc)
-            * Slice
-            * Keyword
+        * ~~Keyword Row Indexing (loc)~~
+            * ~~Slice~~
+            * ~~Keyword~~
 * ~~Better options for combining slice with int~~
 * More Indices
     * RangeIndex
-    * DateTimeIndex
-* DateTime object
+    * ~~DateTimeIndex~~
+* ~~DateTime object~~
 * Fix the underscore names for a lot of these things 
     * Underscored things should be private/protected
 * Label more things Private/Protected
@@ -43,4 +44,7 @@
 * ~~Add typedef for Eigen::Index~~
 * Use index_t instead of Eigen::Index
 * Use mask_t instead of slice<Eigen::Index>
-* Create Parent Class (Frame) for DataFrame and Series
+* ~~Create Parent Class (Frame) for DataFrame and Series~~
+* Index::keys() should return a iterator
+* Create Resampler bindings
+* 

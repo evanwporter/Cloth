@@ -42,14 +42,23 @@ using mask_t = slice<index_t>;
 class Index_ {
 public:
     virtual ~Index_() = default;
+
+    virtual std::shared_ptr<mask_t> mask() const = 0;
+
+    index_t length() const {
+        return mask()->length();
+    }
 };
 
 class StringIndex : public Index_ {
+private:
+    std::shared_ptr<mask_t> mask_;
+
 public:
     std::shared_ptr<robin_hood::unordered_map<std::string, int>> index_;
     std::shared_ptr<std::vector<std::string>> keys_;
-    std::shared_ptr<mask_t> mask_;
 
+public:
     StringIndex(std::shared_ptr<robin_hood::unordered_map<std::string, int>> index, std::shared_ptr<std::vector<std::string>> keys)
         : index_(std::move(index)), keys_(std::move(keys)), 
           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
@@ -97,6 +106,10 @@ public:
         return index_->at(key);
     }
 
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const StringIndex& strIndex) {
         auto k = strIndex.keys();
         os << "[";
@@ -109,20 +122,17 @@ public:
         os << "]";
         return os;
     }
-
-    Eigen::Index length() const {
-        return mask_->length();
-    }
 };
 
 using ColumnIndex = StringIndex;
 
 class DateTimeIndex : public Index_ {
+private:
+    std::shared_ptr<mask_t> mask_;
+
 public:
     std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
     std::shared_ptr<std::vector<Datetime64>> keys_;
-    std::shared_ptr<mask_t> mask_;
-
     
     DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
         : index_(std::move(index)), keys_(std::move(keys)), 
@@ -160,7 +170,7 @@ public:
         mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
     }
 
-    
+    // TODO Keys should return an iterator
     std::vector<Datetime64> keys() const {
         std::vector<Datetime64> result;
         result.reserve(length());
@@ -177,13 +187,11 @@ public:
         }
         return (*keys_)[combine_slice_with_index(*mask_, idx)];
     }
-
     
     int operator[](const Datetime64& key) const {
         return index_->at(key);
     }
 
-    
     friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
         auto k = dtIndex.keys();
         os << "[";
@@ -197,6 +205,9 @@ public:
         return os;
     }
 
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
     
     Eigen::Index length() const {
         return mask_->length();
@@ -458,7 +469,8 @@ public:
     std::shared_ptr<StringIndex> index_;
     std::shared_ptr<ColumnIndex> columns_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
-
+    
+public:
     DataFrame(const DataFrame& other, std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
         index_(std::make_shared<StringIndex>(other.index_, mask)),
@@ -482,7 +494,7 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
 
-    std::shared_ptr<slice<Eigen::Index>> mask() const override {
+    std::shared_ptr<mask_t> mask() const override {
         return mask_;
     }
 
