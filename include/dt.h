@@ -18,6 +18,12 @@
 //#define USE_HOURS
 //#define USE_DAYS
 
+#ifndef INDEX_T
+#define INDEX_T
+#include <cstddef>
+typedef std::ptrdiff_t index_t;
+#endif
+
 #ifndef USE_NANOSECONDS
 #ifndef USE_MICROSECONDS
 #ifndef USE_MILLISECONDS
@@ -112,7 +118,24 @@ namespace TimeConstants {
 // Forward declaration for the iso_datetime64 function
 dtime_t iso_to_time_units(const std::string& iso_time);
 
-class Timedelta64;
+class Timedelta64 {
+public:
+    dtime_t data_;
+
+    Timedelta64(dtime_t units = 0) : data_(units) {}
+
+    Timedelta64 operator+(const Timedelta64 &other) const {
+        return Timedelta64(data_ + other.data_);
+    }
+
+    Timedelta64 operator-(const Timedelta64 &other) const {
+        return Timedelta64(data_ - other.data_);
+    }
+
+    Timedelta64 operator*(const index_t &other) const {
+        return Timedelta64(data_ * other);
+    }
+};
 
 class Datetime64 {
 private:
@@ -128,6 +151,21 @@ public:
     Datetime64 operator+(const Timedelta64 &delta) const;
     Datetime64 operator-(const Timedelta64 &delta) const;
     Timedelta64 operator-(const Datetime64 &other) const;
+
+    // Floor the datetime to the nearest given Timedelta64
+    Datetime64 floor(const Timedelta64 &delta) const {
+        dtime_t floored_data = (data_ / delta.data_) * delta.data_;
+        return Datetime64(floored_data);
+    }
+
+    // Ceil the datetime to the nearest given Timedelta64
+    Datetime64 ceil(const Timedelta64 &delta) const {
+        dtime_t floored_data = (data_ / delta.data_) * delta.data_;
+        if (data_ % delta.data_ != 0) {
+            floored_data += delta.data_;
+        }
+        return Datetime64(floored_data);
+    }
 
     // Conversion methods
     int64_t seconds() const { return data_ / UNITS_PER_SECOND; }
@@ -207,22 +245,6 @@ public:
     bool operator>=(const Datetime64& other) const {
         return data_ >= other.data_;
     }
-
-};
-
-class Timedelta64 {
-public:
-    dtime_t data_;
-
-    Timedelta64(dtime_t units = 0) : data_(units) {}
-
-    Timedelta64 operator+(const Timedelta64 &other) const {
-        return Timedelta64(data_ + other.data_);
-    }
-
-    Timedelta64 operator-(const Timedelta64 &other) const {
-        return Timedelta64(data_ - other.data_);
-    }
 };
 
 inline Datetime64 Datetime64::operator+(const Timedelta64 &delta) const {
@@ -235,7 +257,7 @@ inline Datetime64 Datetime64::operator-(const Timedelta64 &delta) const {
 
 inline Timedelta64 Datetime64::operator-(const Datetime64 &other) const {
     return Timedelta64(data_ - other.data_);
-}
+};
 
 dtime_t iso_to_time_units(const std::string& iso_time) {
     std::tm t = {};

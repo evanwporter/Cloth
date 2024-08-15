@@ -21,8 +21,8 @@ std::vector<int> digitize(const std::vector<double>& array, const std::vector<do
     return indices;
 }
 
-template <typename T>
-std::vector<int> digitize(const std::vector<T>& array, const slice<T>& bin_edges) {
+template <typename T=index_t, typename sT=index_t>
+std::vector<int> digitize(const std::vector<T>& array, const slice<T, sT>& bin_edges) {
     // O(n+m)
     std::vector<int> indices(bin_edges.length(), 0);
     

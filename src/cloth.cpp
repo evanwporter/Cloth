@@ -293,6 +293,10 @@ public:
         return Derived(static_cast<const Derived&>(*this), 
                        std::make_shared<slice<Eigen::Index>>(length() - std::min(n, length()), length(), 1));
     }
+
+    auto resample(const Timedelta64& freq) const {
+        return Resampler<Derived>(std::make_shared<Derived>(static_cast<const Derived&>(*this)), freq);
+    }
 };
 
 class Series : public Frame<Series> {
@@ -609,19 +613,58 @@ public:
     }
 };
 
-// class Resampler {
-//     std::shared_ptr<DateTimeIndex> index_;
-//     Timedelta64 freq;
+template <typename FrameType>
+class Resampler {
+private:
+    std::shared_ptr<FrameType> data_;
+    Timedelta64 freq_;
+    std::vector<int> bins_;
+    size_t current_bin_;
 
-//     void _resample() {
-//         slice<Datetime64> bins(
-//             std::ceil(index_->keys().front() / freq) * freq,
-//             std::ceil(index_->keys().back() / freq) * freq,
-//             freq
-//         );
-//         digitize(index_->keys(), bins)
-//     };
-// };
+public:
+    Resampler(std::shared_ptr<FrameType> data, Timedelta64 freq)
+        : data_(std::move(data)), freq_(freq), current_bin_(0) {
+        resample();
+    }
+
+    // Iterator implementation
+    Resampler& begin() {
+        current_bin_ = 0;
+        return *this;
+    }
+
+    Resampler& end() {
+        current_bin_ = bins_.size() - 1;
+        return *this;
+    }
+
+    bool operator!=(const Resampler& other) const {
+        return current_bin_ != other.current_bin_;
+    }
+
+    void operator++() {
+        if (current_bin_ < bins_.size() - 1) {
+            ++current_bin_;
+        }
+    }
+
+    FrameType operator*() const {
+        return data_->iloc()[slice<int>(bins_[current_bin_], bins_[current_bin_ + 1], 1)];
+    }
+
+private:
+    void resample() {
+        // Dynamic cast throws std::bad_cast if its not a DateTimeIndex. For runtime safety
+        const auto& datetime_index = dynamic_cast<const DateTimeIndex&>(data_->index());
+        slice<Datetime64, Timedelta64> bins(
+            datetime_index.keys().front().floor(freq_),
+            datetime_index.keys().back().ceil(freq_),
+            freq_
+        );
+        bins_ = digitize(datetime_index.keys(), bins);
+    }
+};
+
 
 NB_MODULE(cloth, m) {
     m.def("read_csv", &read_csv);
@@ -777,4 +820,30 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("index", &DataFrame::index)
         .def("sum", &DataFrame::sum)
         .def_prop_ro("columns", &DataFrame::columns);
+
+    // nb::class_<Resampler<Series>>(m, "SeriesResampler")
+    //     .def(nb::init<std::shared_ptr<Series>, Timedelta64>())
+    //     .def("__iter__", [](Resampler<Series>& self) -> Resampler<Series>& { return self.begin(); })
+    //     .def("__next__", [](Resampler<Series>& self) -> Series {
+    //         if (self != self.end()) {
+    //             Series result = *self;
+    //             ++self;
+    //             return result;
+    //         } else {
+    //             throw nb::stop_iteration();
+    //         }
+    //     });
+
+    // nb::class_<Resampler<DataFrame>>(m, "DataFrameResampler")
+    //     .def(nb::init<std::shared_ptr<DataFrame>, Timedelta64>())
+    //     .def("__iter__", [](Resampler<DataFrame>& self) -> Resampler<DataFrame>& { return self.begin(); })
+    //     .def("__next__", [](Resampler<DataFrame>& self) -> DataFrame {
+    //         if (self != self.end()) {
+    //             DataFrame result = *self;
+    //             ++self;
+    //             return result;
+    //         } else {
+    //             throw nb::stop_iteration();
+    //         }
+    //     });
 }

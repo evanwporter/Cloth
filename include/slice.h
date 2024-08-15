@@ -7,23 +7,23 @@
 typedef std::ptrdiff_t index_t;
 #endif
 
-template <typename T = index_t>
+template <typename T = index_t, typename sT = index_t>
 struct slice {
     T start, stop;
-    int step;
+    sT step;
 
-    slice(T start_, T stop_, int step_) 
+    slice(T start_, T stop_, sT step_) 
         : start(start_), stop(stop_), step(step_) {
         if (step == 0) throw std::invalid_argument("Step cannot be zero");
         LOG("Creating slice with start=" << start << ", stop=" << stop << ", step=" << step);
     }
 
-    slice(T start_, T stop_, int step_, Eigen::Index length) 
+    slice(T start_, T stop_, sT step_, index_t length) 
         : slice(start_, stop_, step_) {
         normalize(length);
     }
 
-    void normalize(Eigen::Index length) {
+    void normalize(index_t length) {
         if (start < 0) start += length;
         if (stop < 0) stop += length;
         if (start < 0) start = 0;
@@ -31,7 +31,7 @@ struct slice {
         LOG("Normalized slice to start=" << start << ", stop=" << stop << ", step=" << step);
     }
 
-    Eigen::Index length() const {
+    index_t length() const {
         // Number elements
         return (step > 0) ? (stop - start + step - 1) / step : (start - stop - step + 1) / (-step);
     }
