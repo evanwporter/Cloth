@@ -136,7 +136,7 @@ public:
                        std::make_shared<slice<Eigen::Index>>(length() - std::min(n, length()), length(), 1));
     }
 
-    auto resample(const Timedelta64& freq) const {
+    auto resample(const timedelta& freq) const {
         return Resampler<Derived>(std::make_shared<Derived>(static_cast<const Derived&>(*this)), freq);
     }
 };
@@ -454,12 +454,12 @@ template <typename FrameType>
 class Resampler {
 private:
     std::shared_ptr<FrameType> data_;
-    Timedelta64 freq_;
+    timedelta freq_;
     std::vector<int> bins_;
     size_t current_bin_;
 
 public:
-    Resampler(std::shared_ptr<FrameType> data, Timedelta64 freq)
+    Resampler(std::shared_ptr<FrameType> data, timedelta freq)
         : data_(std::move(data)), freq_(freq), current_bin_(0) {
         resample();
     }
@@ -493,7 +493,7 @@ private:
     void resample() {
         // Dynamic cast throws std::bad_cast if its not a DateTimeIndex. For runtime safety
         const auto& datetime_index = dynamic_cast<const DateTimeIndex&>(data_->index());
-        slice<Datetime64, Timedelta64> bins(
+        slice<datetime, timedelta> bins(
             datetime_index.keys().front().floor(freq_),
             datetime_index.keys().back().ceil(freq_),
             freq_
@@ -530,34 +530,36 @@ NB_MODULE(cloth, m) {
 
     m.attr("ColumnIndex") = m.attr("StringIndex");
 
-    nb::class_<Datetime64>(m, "Datetime64")
+    nb::class_<datetime>(m, "datetime")
         // .def(nb::init<dtime_t>())  
         .def(nb::init<const std::string&>())  
-        .def("__add__", &Datetime64::operator+)    
-        .def("seconds", &Datetime64::seconds)  
-        .def("minutes", &Datetime64::minutes)  
-        .def("hours", &Datetime64::hours)  
-        .def("days", &Datetime64::days)  
-        .def("weeks", &Datetime64::weeks)  
-        .def("years", &Datetime64::years)  
-        .def("months", &Datetime64::months)  
-        .def("__repr__", [](const Datetime64& self) {
+        .def("__add__", &datetime::operator+)    
+        .def("seconds", &datetime::seconds)  
+        .def("minutes", &datetime::minutes)  
+        .def("hours", &datetime::hours)  
+        .def("days", &datetime::days)  
+        .def("weeks", &datetime::weeks)  
+        .def("years", &datetime::years)  
+        .def("months", &datetime::months)  
+        .def("__repr__", [](const datetime& self) {
             std::ostringstream oss;
-            oss << "Datetime64(" << self.seconds() << ")";
+            oss << "datetime(" << self.seconds() << ")";
             return oss.str();
         }); 
 
-    
-    // nb::class_<Timedelta64>(m, "Timedelta64")
-    //     // .def(nb::init<dtime_t>())  
-    //     .def("__add__", &Timedelta64::operator+)  
-    //     .def("__sub__", &Timedelta64::operator-)  
-    //     .def("__repr__", [](const Timedelta64& self) {
-    //         std::ostringstream oss;
-    //         oss << "Timedelta64(" << self.data_ << ")";
-    //         return oss.str();
-    //     });  
+    nb::class_<timedelta>(m, "timedelta")
+        .def(nb::init<dtime_t>(), "Constructor with time units", nb::arg("units") = 0)
+        .def(nb::init<const std::string&>(), "Constructor from string", nb::arg("str"))
+        
+        .def("__add__", &timedelta::operator+, nb::arg("other"))
+        .def("__sub__", &timedelta::operator-, nb::arg("other"))
+        .def("__mul__", &timedelta::operator*, nb::arg("other"))
 
+        .def("__repr__", [](const timedelta &td) {
+            std::stringstream ss;
+            ss << "timedelta(" << td.data_ << ")";
+            return ss.str();
+        });
     
     // nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
     //     .def(nb::init<std::vector<std::string>>())  
@@ -565,7 +567,7 @@ NB_MODULE(cloth, m) {
     //     .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
     //         return self[idx];
     //     }, nb::is_operator())  
-    //     .def("__getitem__", [](DateTimeIndex& self, const Datetime64& key) {
+    //     .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
     //         return self[key];
     //     }, nb::is_operator())  
     //     .def("keys", &DateTimeIndex::keys)  
@@ -659,7 +661,7 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("columns", &DataFrame::columns);
 
     // nb::class_<Resampler<Series>>(m, "SeriesResampler")
-    //     .def(nb::init<std::shared_ptr<Series>, Timedelta64>())
+    //     .def(nb::init<std::shared_ptr<Series>, timedelta>())
     //     .def("__iter__", [](Resampler<Series>& self) -> Resampler<Series>& { return self.begin(); })
     //     .def("__next__", [](Resampler<Series>& self) -> Series {
     //         if (self != self.end()) {
@@ -672,7 +674,7 @@ NB_MODULE(cloth, m) {
     //     });
 
     // nb::class_<Resampler<DataFrame>>(m, "DataFrameResampler")
-    //     .def(nb::init<std::shared_ptr<DataFrame>, Timedelta64>())
+    //     .def(nb::init<std::shared_ptr<DataFrame>, timedelta>())
     //     .def("__iter__", [](Resampler<DataFrame>& self) -> Resampler<DataFrame>& { return self.begin(); })
     //     .def("__next__", [](Resampler<DataFrame>& self) -> DataFrame {
     //         if (self != self.end()) {

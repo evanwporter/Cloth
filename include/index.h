@@ -44,7 +44,7 @@ public:
         return mask()->length();
     }
 
-    virtual index_t operator[] (const Datetime64& index) const = 0;
+    virtual index_t operator[] (const datetime& index) const = 0;
     virtual index_t operator[](const std::string& key) const = 0;
     virtual std::vector<std::string> keys() const = 0;
     virtual std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const = 0;
@@ -107,8 +107,8 @@ public:
         return (*keys_)[combine_slice_with_index(*mask_, idx)];
     }
 
-    index_t operator[](const Datetime64& index) const override {
-        throw std::runtime_error("StringIndex does not support Datetime64 indexing.");
+    index_t operator[](const datetime& index) const override {
+        throw std::runtime_error("StringIndex does not support datetime indexing.");
     }
 
     index_t operator[](const std::string& key) const {
@@ -138,10 +138,10 @@ public:
 //     std::shared_ptr<mask_t> mask_;
 
 // public:
-//     std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
-//     std::shared_ptr<std::vector<Datetime64>> keys_;
+//     std::shared_ptr<robin_hood::unordered_map<datetime, int>> index_;
+//     std::shared_ptr<std::vector<datetime>> keys_;
     
-//     DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
+//     DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<datetime, int>> index, std::shared_ptr<std::vector<datetime>> keys)
 //         : index_(std::move(index)), keys_(std::move(keys)), 
 //           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
 
@@ -151,11 +151,11 @@ public:
 
     
 //     explicit DateTimeIndex(std::vector<std::string> iso_keys)
-//         : keys_(std::make_shared<std::vector<Datetime64>>()),
-//           index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+//         : keys_(std::make_shared<std::vector<datetime>>()),
+//           index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
 
 //         for (size_t i = 0; i < iso_keys.size(); ++i) {
-//             Datetime64 dt(iso_keys[i]);
+//             datetime dt(iso_keys[i]);
 //             keys_->push_back(dt);
 //             (*index_)[dt] = static_cast<int>(i);
 //         }
@@ -164,13 +164,13 @@ public:
 
     
 //     explicit DateTimeIndex(nb::list iso_keys)
-//         : keys_(std::make_shared<std::vector<Datetime64>>()), 
-//           index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+//         : keys_(std::make_shared<std::vector<datetime>>()), 
+//           index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
 
 //         keys_->reserve(iso_keys.size());
 //         for (size_t i = 0; i < iso_keys.size(); ++i) {
 //             std::string iso_key = nb::cast<std::string>(iso_keys[i]);
-//             Datetime64 dt(iso_key);
+//             datetime dt(iso_key);
 //             keys_->push_back(dt);
 //             (*index_)[dt] = static_cast<int>(i);
 //         }
@@ -178,8 +178,8 @@ public:
 //     }
 
 //     // // TODO Keys should return an iterator
-//     // std::vector<Datetime64> keys() const {
-//     //     std::vector<Datetime64> result;
+//     // std::vector<datetime> keys() const {
+//     //     std::vector<datetime> result;
 //     //     result.reserve(length());
 //     //     for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
 //     //         result.push_back((*keys_)[i]);
@@ -188,14 +188,14 @@ public:
 //     // }
 
     
-//     Datetime64 operator[](Eigen::Index idx) const {
+//     datetime operator[](Eigen::Index idx) const {
 //         if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
 //             throw std::out_of_range("Index out of range");
 //         }
 //         return (*keys_)[combine_slice_with_index(*mask_, idx)];
 //     }
     
-//     index_t operator[](const Datetime64& key) const {
+//     index_t operator[](const datetime& key) const {
 //         return index_->at(key);
 //     }
 

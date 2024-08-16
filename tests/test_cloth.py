@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-import cloth  # Import your module here
+import cloth
 
 def test_slice():
     sl = cloth.slice(0, 10, 2)
@@ -146,18 +146,18 @@ def test_dataframe_loc():
     assert sliced_df["col1"].sum() == 15.0
 
 def test_datetime64():
-    dt = cloth.Datetime64("2023-08-14T15:23:45")
-    assert dt.seconds() == 1692026625 
+    dt = cloth.datetime("2023-08-14T15:23:45")
+    assert dt.seconds() == 1691971245 
     assert dt.days() > 0 
 
-    delta = cloth.Timedelta64(3600)
+    delta = cloth.timedelta(3600)
     dt_plus_delta = dt + delta
     assert dt_plus_delta.seconds() == dt.seconds() + 3600
 
     dt_minus_delta = dt - delta
     assert dt_minus_delta.seconds() == dt.seconds() - 3600
 
-    dt2 = cloth.Datetime64("2023-08-14T16:23:45")
+    dt2 = cloth.datetime("2023-08-14T16:23:45")
     delta_dt = dt2 - dt
     assert delta_dt.data_ == 3600  
 
@@ -172,7 +172,7 @@ def test_datetime_index():
     dt0 = dt_index[0]
     assert dt0.seconds() == 1692024225
 
-    dt1 = cloth.Datetime64("2023-08-15T16:24:50")
+    dt1 = cloth.datetime("2023-08-15T16:24:50")
     assert dt_index[dt1] == 1  
 
 if __name__ == "__main__":

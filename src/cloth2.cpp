@@ -49,7 +49,7 @@ public:
         return mask()->length();
     }
 
-    virtual index_t operator[] (const Datetime64& index) const = 0;
+    virtual index_t operator[] (const datetime& index) const = 0;
 
     virtual index_t operator[](const std::string& key) const = 0;
 
@@ -117,8 +117,8 @@ public:
         return index_->at(key);
     }
 
-    index_t operator[](const Datetime64& index) const override {
-        throw std::runtime_error("StringIndex does not support Datetime64 indexing.");
+    index_t operator[](const datetime& index) const override {
+        throw std::runtime_error("StringIndex does not support datetime indexing.");
     }
 
     std::shared_ptr<mask_t> mask() const override {
@@ -146,10 +146,10 @@ private:
     std::shared_ptr<mask_t> mask_;
 
 public:
-    std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
-    std::shared_ptr<std::vector<Datetime64>> keys_;
+    std::shared_ptr<robin_hood::unordered_map<datetime, int>> index_;
+    std::shared_ptr<std::vector<datetime>> keys_;
     
-    DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
+    DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<datetime, int>> index, std::shared_ptr<std::vector<datetime>> keys)
         : index_(std::move(index)), keys_(std::move(keys)), 
           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
 
@@ -159,11 +159,11 @@ public:
 
     
     explicit DateTimeIndex(std::vector<std::string> iso_keys)
-        : keys_(std::make_shared<std::vector<Datetime64>>()),
-          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+        : keys_(std::make_shared<std::vector<datetime>>()),
+          index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
 
         for (size_t i = 0; i < iso_keys.size(); ++i) {
-            Datetime64 dt(iso_keys[i]);
+            datetime dt(iso_keys[i]);
             keys_->push_back(dt);
             (*index_)[dt] = static_cast<int>(i);
         }
@@ -172,13 +172,13 @@ public:
 
     
     explicit DateTimeIndex(nb::list iso_keys)
-        : keys_(std::make_shared<std::vector<Datetime64>>()), 
-          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+        : keys_(std::make_shared<std::vector<datetime>>()), 
+          index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
 
         keys_->reserve(iso_keys.size());
         for (size_t i = 0; i < iso_keys.size(); ++i) {
             std::string iso_key = nb::cast<std::string>(iso_keys[i]);
-            Datetime64 dt(iso_key);
+            datetime dt(iso_key);
             keys_->push_back(dt);
             (*index_)[dt] = static_cast<int>(i);
         }
@@ -187,7 +187,7 @@ public:
 
     // // TODO Keys should return an iterator
     // std::vector<std::string> keys() const {
-    //     std::vector<Datetime64> result;
+    //     std::vector<datetime> result;
     //     result.reserve(length());
     //     for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
     //         result.push_back((*keys_)[i]);
@@ -196,14 +196,14 @@ public:
     // }
 
     
-    Datetime64 operator[](Eigen::Index idx) const {
+    datetime operator[](Eigen::Index idx) const {
         if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
             throw std::out_of_range("Index out of range");
         }
         return (*keys_)[combine_slice_with_index(*mask_, idx)];
     }
     
-    index_t operator[](const Datetime64& key) const {
+    index_t operator[](const datetime& key) const {
         return index_->at(key);
     }
 
@@ -324,7 +324,7 @@ public:
                        std::make_shared<slice<Eigen::Index>>(length() - std::min(n, length()), length(), 1));
     }
 
-    auto resample(const Timedelta64& freq) const {
+    auto resample(const timedelta& freq) const {
         return Resampler<Derived>(std::make_shared<Derived>(static_cast<const Derived&>(*this)), freq);
     }
 };
@@ -645,12 +645,12 @@ template <typename FrameType>
 class Resampler {
 private:
     std::shared_ptr<FrameType> data_;
-    Timedelta64 freq_;
+    timedelta freq_;
     std::vector<int> bins_;
     size_t current_bin_;
 
 public:
-    Resampler(std::shared_ptr<FrameType> data, Timedelta64 freq)
+    Resampler(std::shared_ptr<FrameType> data, timedelta freq)
         : data_(std::move(data)), freq_(freq), current_bin_(0) {
         resample();
     }
@@ -684,7 +684,7 @@ private:
     void resample() {
         // Dynamic cast throws std::bad_cast if its not a DateTimeIndex. For runtime safety
         const auto& datetime_index = dynamic_cast<const DateTimeIndex&>(data_->index());
-        slice<Datetime64, Timedelta64> bins(
+        slice<datetime, timedelta> bins(
             datetime_index.keys().front().floor(freq_),
             datetime_index.keys().back().ceil(freq_),
             freq_
@@ -721,31 +721,31 @@ NB_MODULE(cloth, m) {
 
     m.attr("ColumnIndex") = m.attr("StringIndex");
 
-    nb::class_<Datetime64>(m, "Datetime64")
+    nb::class_<datetime>(m, "datetime")
         // .def(nb::init<dtime_t>())  
         .def(nb::init<const std::string&>())  
-        .def("__add__", &Datetime64::operator+)    
-        .def("seconds", &Datetime64::seconds)  
-        .def("minutes", &Datetime64::minutes)  
-        .def("hours", &Datetime64::hours)  
-        .def("days", &Datetime64::days)  
-        .def("weeks", &Datetime64::weeks)  
-        .def("years", &Datetime64::years)  
-        .def("months", &Datetime64::months)  
-        .def("__repr__", [](const Datetime64& self) {
+        .def("__add__", &datetime::operator+)    
+        .def("seconds", &datetime::seconds)  
+        .def("minutes", &datetime::minutes)  
+        .def("hours", &datetime::hours)  
+        .def("days", &datetime::days)  
+        .def("weeks", &datetime::weeks)  
+        .def("years", &datetime::years)  
+        .def("months", &datetime::months)  
+        .def("__repr__", [](const datetime& self) {
             std::ostringstream oss;
-            oss << "Datetime64(" << self.seconds() << ")";
+            oss << "datetime(" << self.seconds() << ")";
             return oss.str();
         }); 
 
     
-    // nb::class_<Timedelta64>(m, "Timedelta64")
+    // nb::class_<timedelta>(m, "timedelta")
     //     // .def(nb::init<dtime_t>())  
-    //     .def("__add__", &Timedelta64::operator+)  
-    //     .def("__sub__", &Timedelta64::operator-)  
-    //     .def("__repr__", [](const Timedelta64& self) {
+    //     .def("__add__", &timedelta::operator+)  
+    //     .def("__sub__", &timedelta::operator-)  
+    //     .def("__repr__", [](const timedelta& self) {
     //         std::ostringstream oss;
-    //         oss << "Timedelta64(" << self.data_ << ")";
+    //         oss << "timedelta(" << self.data_ << ")";
     //         return oss.str();
     //     });  
 
@@ -756,7 +756,7 @@ NB_MODULE(cloth, m) {
     //     .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
     //         return self[idx];
     //     }, nb::is_operator())  
-    //     .def("__getitem__", [](DateTimeIndex& self, const Datetime64& key) {
+    //     .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
     //         return self[key];
     //     }, nb::is_operator())  
     //     .def("keys", &DateTimeIndex::keys)  
@@ -850,7 +850,7 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("columns", &DataFrame::columns);
 
     // nb::class_<Resampler<Series>>(m, "SeriesResampler")
-    //     .def(nb::init<std::shared_ptr<Series>, Timedelta64>())
+    //     .def(nb::init<std::shared_ptr<Series>, timedelta>())
     //     .def("__iter__", [](Resampler<Series>& self) -> Resampler<Series>& { return self.begin(); })
     //     .def("__next__", [](Resampler<Series>& self) -> Series {
     //         if (self != self.end()) {
@@ -863,7 +863,7 @@ NB_MODULE(cloth, m) {
     //     });
 
     // nb::class_<Resampler<DataFrame>>(m, "DataFrameResampler")
-    //     .def(nb::init<std::shared_ptr<DataFrame>, Timedelta64>())
+    //     .def(nb::init<std::shared_ptr<DataFrame>, timedelta>())
     //     .def("__iter__", [](Resampler<DataFrame>& self) -> Resampler<DataFrame>& { return self.begin(); })
     //     .def("__next__", [](Resampler<DataFrame>& self) -> DataFrame {
     //         if (self != self.end()) {

@@ -33,9 +33,6 @@ find_package(Python 3.8
 # Import nanobind through CMake's find_package mechanism
 find_package(nanobind CONFIG REQUIRED)
 
-# Add the directory containing robinhood.h to the include path
-# target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib)
-
 # We are now ready to compile the actual extension module
 nanobind_add_module(
   # Name of the extension
@@ -58,5 +55,8 @@ nanobind_add_module(
   src/cloth.cpp
 )
 
+set(EIGEN3_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/lib/Eigen")
+target_include_directories(cloth PRIVATE ${EIGEN3_INCLUDE_DIR})
+set(CMAKE_GENERATOR_PLATFORM x64)
 # Install directive for scikit-build-core
 install(TARGETS cloth LIBRARY DESTINATION cloth)

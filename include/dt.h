@@ -9,15 +9,6 @@
 #include <ctime>
 #include <functional>
 
-
-//#define USE_NANOSECONDS
-//#define USE_MICROSECONDS
-//#define USE_MILLISECONDS
-//#define USE_SECONDS
-//#define USE_MINUTES
-//#define USE_HOURS
-//#define USE_DAYS
-
 #ifndef INDEX_T
 #define INDEX_T
 #include <cstddef>
@@ -118,53 +109,101 @@ namespace TimeConstants {
 // Forward declaration for the iso_datetime64 function
 dtime_t iso_to_time_units(const std::string& iso_time);
 
-class Timedelta64 {
+class timedelta {
 public:
     dtime_t data_;
 
-    Timedelta64(dtime_t units = 0) : data_(units) {}
+    // Default constructor
+    timedelta(dtime_t units = 0) : data_(units) {}
 
-    Timedelta64 operator+(const Timedelta64 &other) const {
-        return Timedelta64(data_ + other.data_);
+    // String constructor
+    timedelta(const std::string& str) {
+        data_ = parse_string(str);
     }
 
-    Timedelta64 operator-(const Timedelta64 &other) const {
-        return Timedelta64(data_ - other.data_);
+    timedelta operator+(const timedelta &other) const {
+        return timedelta(data_ + other.data_);
     }
 
-    Timedelta64 operator*(const index_t &other) const {
-        return Timedelta64(data_ * other);
+    timedelta operator-(const timedelta &other) const {
+        return timedelta(data_ - other.data_);
+    }
+
+    timedelta operator*(const index_t &other) const {
+        return timedelta(data_ * other);
+    }
+
+private:
+    static dtime_t parse_string(const std::string& str) {
+        if (str.empty()) {
+            throw std::invalid_argument("Invalid input string");
+        }
+
+        size_t num_length = 0;
+        while (num_length < str.size() && isdigit(str[num_length])) {
+            num_length++;
+        }
+
+        if (num_length == 0) {
+            throw std::invalid_argument("No numeric value found in string");
+        }
+
+        int64_t value = std::stoll(str.substr(0, num_length));
+        std::string unit = str.substr(num_length);
+
+        if (unit == "ns") {
+            return value;
+        } else if (unit == "us") {
+            return value * (UNITS_PER_SECOND / 1e6);
+        } else if (unit == "ms") {
+            return value * (UNITS_PER_SECOND / 1e3);
+        } else if (unit == "s") {
+            return value * UNITS_PER_SECOND;
+        } else if (unit == "m") {
+            return value * UNITS_PER_MINUTE;
+        } else if (unit == "h") {
+            return value * UNITS_PER_HOUR;
+        } else if (unit == "D") {
+            return value * UNITS_PER_DAY;
+        } else if (unit == "W") {
+            return value * UNITS_PER_WEEK;
+        } else if (unit == "Y") {
+            // Assuming 1 year = 365 days
+            return value * 365 * UNITS_PER_DAY;
+        } else {
+            throw std::invalid_argument("Unknown time unit: " + unit);
+        }
     }
 };
 
-class Datetime64 {
+class datetime {
 private:
     dtime_t data_;
 
 public:
 
-    Datetime64(dtime_t data) : data_(data) {}
+    datetime(dtime_t data) : data_(data) {}
 
     // ISO 8601 formatted string constructor
-    Datetime64(const std::string& iso_time) : data_(iso_to_time_units(iso_time)) {}
+    datetime(const std::string& iso_time) : data_(iso_to_time_units(iso_time)) {}
 
-    Datetime64 operator+(const Timedelta64 &delta) const;
-    Datetime64 operator-(const Timedelta64 &delta) const;
-    Timedelta64 operator-(const Datetime64 &other) const;
+    datetime operator+(const timedelta &delta) const;
+    datetime operator-(const timedelta &delta) const;
+    timedelta operator-(const datetime &other) const;
 
-    // Floor the datetime to the nearest given Timedelta64
-    Datetime64 floor(const Timedelta64 &delta) const {
+    // Floor the datetime to the nearest given timedelta
+    datetime floor(const timedelta &delta) const {
         dtime_t floored_data = (data_ / delta.data_) * delta.data_;
-        return Datetime64(floored_data);
+        return datetime(floored_data);
     }
 
-    // Ceil the datetime to the nearest given Timedelta64
-    Datetime64 ceil(const Timedelta64 &delta) const {
+    // Ceil the datetime to the nearest given timedelta
+    datetime ceil(const timedelta &delta) const {
         dtime_t floored_data = (data_ / delta.data_) * delta.data_;
         if (data_ % delta.data_ != 0) {
             floored_data += delta.data_;
         }
-        return Datetime64(floored_data);
+        return datetime(floored_data);
     }
 
     // Conversion methods
@@ -222,41 +261,41 @@ public:
         return month_count;
     }
 
-    bool operator==(const Datetime64& other) const {
+    bool operator==(const datetime& other) const {
         return data_ == other.data_;
     }
 
-    bool operator!=(const Datetime64& other) const {
+    bool operator!=(const datetime& other) const {
         return data_ != other.data_;
     }
 
-    bool operator<(const Datetime64& other) const {
+    bool operator<(const datetime& other) const {
         return data_ < other.data_;
     }
 
-    bool operator<=(const Datetime64& other) const {
+    bool operator<=(const datetime& other) const {
         return data_ <= other.data_;
     }
 
-    bool operator>(const Datetime64& other) const {
+    bool operator>(const datetime& other) const {
         return data_ > other.data_;
     }
 
-    bool operator>=(const Datetime64& other) const {
+    bool operator>=(const datetime& other) const {
         return data_ >= other.data_;
     }
 };
 
-inline Datetime64 Datetime64::operator+(const Timedelta64 &delta) const {
-    return Datetime64(data_ + delta.data_);
+inline datetime datetime::operator+(const timedelta &delta) const {
+    return datetime(data_ + delta.data_);
 }
 
-inline Datetime64 Datetime64::operator-(const Timedelta64 &delta) const {
-    return Datetime64(data_ - delta.data_);
+inline datetime datetime::operator-(const timedelta &delta) const {
+    return datetime(data_ - delta.data_);
 }
 
-inline Timedelta64 Datetime64::operator-(const Datetime64 &other) const {
-    return Timedelta64(data_ - other.data_);
+inline timedelta datetime::operator-(const datetime &other) const {
+    return timedelta(data_ - other.data_);
 };
 
 dtime_t iso_to_time_units(const std::string& iso_time) {
@@ -325,8 +364,8 @@ dtime_t iso_to_time_units(const std::string& iso_time) {
 
 namespace std {
     template<>
-    struct hash<Datetime64> {
-        std::size_t operator()(const Datetime64& dt) const noexcept {
+    struct hash<datetime> {
+        std::size_t operator()(const datetime& dt) const noexcept {
             return std::hash<time_t>{}(dt.seconds());
         }
     };
