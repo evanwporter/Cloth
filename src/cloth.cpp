@@ -41,6 +41,8 @@ using mask_t = slice<index_t>;
 
 class Index_ {
 public:
+    Index_() = default;
+
     virtual ~Index_() = default;
 
     virtual std::shared_ptr<mask_t> mask() const = 0;
@@ -48,7 +50,15 @@ public:
     index_t length() const {
         return mask()->length();
     }
+
+    virtual index_t operator[] (const Datetime64& index) const = 0;
+
+    virtual index_t operator[](const std::string& key) const = 0;
+
+    virtual std::vector<std::string> keys() const = 0;
+
 };
+
 
 class StringIndex : public Index_ {
 private:
@@ -102,7 +112,11 @@ public:
         return (*keys_)[combine_slice_with_index(*mask_, idx)];
     }
 
-    int operator[](const std::string& key) const {
+    index_t operator[](const Datetime64& index) const override {
+        throw std::runtime_error("StringIndex does not support Datetime64 indexing.");
+    }
+
+    index_t operator[](const std::string& key) const {
         return index_->at(key);
     }
 
@@ -126,93 +140,93 @@ public:
 
 using ColumnIndex = StringIndex;
 
-class DateTimeIndex : public Index_ {
-private:
-    std::shared_ptr<mask_t> mask_;
+// class DateTimeIndex : public Index_ {
+// private:
+//     std::shared_ptr<mask_t> mask_;
 
-public:
-    std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
-    std::shared_ptr<std::vector<Datetime64>> keys_;
+// public:
+//     std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
+//     std::shared_ptr<std::vector<Datetime64>> keys_;
     
-    DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
-        : index_(std::move(index)), keys_(std::move(keys)), 
-          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
-
-    
-    DateTimeIndex(std::shared_ptr<DateTimeIndex> other, std::shared_ptr<mask_t> mask)
-        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+//     DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
+//         : index_(std::move(index)), keys_(std::move(keys)), 
+//           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
 
     
-    explicit DateTimeIndex(std::vector<std::string> iso_keys)
-        : keys_(std::make_shared<std::vector<Datetime64>>()),
-          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
-
-        for (size_t i = 0; i < iso_keys.size(); ++i) {
-            Datetime64 dt(iso_keys[i]);
-            keys_->push_back(dt);
-            (*index_)[dt] = static_cast<int>(i);
-        }
-        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
-    }
+//     DateTimeIndex(std::shared_ptr<DateTimeIndex> other, std::shared_ptr<mask_t> mask)
+//         : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
 
     
-    explicit DateTimeIndex(nb::list iso_keys)
-        : keys_(std::make_shared<std::vector<Datetime64>>()), 
-          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+//     explicit DateTimeIndex(std::vector<std::string> iso_keys)
+//         : keys_(std::make_shared<std::vector<Datetime64>>()),
+//           index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
 
-        keys_->reserve(iso_keys.size());
-        for (size_t i = 0; i < iso_keys.size(); ++i) {
-            std::string iso_key = nb::cast<std::string>(iso_keys[i]);
-            Datetime64 dt(iso_key);
-            keys_->push_back(dt);
-            (*index_)[dt] = static_cast<int>(i);
-        }
-        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
-    }
-
-    // TODO Keys should return an iterator
-    std::vector<Datetime64> keys() const {
-        std::vector<Datetime64> result;
-        result.reserve(length());
-        for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
-            result.push_back((*keys_)[i]);
-        }
-        return result;
-    }
+//         for (size_t i = 0; i < iso_keys.size(); ++i) {
+//             Datetime64 dt(iso_keys[i]);
+//             keys_->push_back(dt);
+//             (*index_)[dt] = static_cast<int>(i);
+//         }
+//         mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
+//     }
 
     
-    Datetime64 operator[](Eigen::Index idx) const {
-        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
-            throw std::out_of_range("Index out of range");
-        }
-        return (*keys_)[combine_slice_with_index(*mask_, idx)];
-    }
-    
-    int operator[](const Datetime64& key) const {
-        return index_->at(key);
-    }
+//     explicit DateTimeIndex(nb::list iso_keys)
+//         : keys_(std::make_shared<std::vector<Datetime64>>()), 
+//           index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
 
-    friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
-        auto k = dtIndex.keys();
-        os << "[";
-        for (size_t i = 0; i < k.size(); ++i) {
-            os << k[i].seconds();  
-            if (i < k.size() - 1) {
-                os << ", ";
-            }
-        }
-        os << "]";
-        return os;
-    }
+//         keys_->reserve(iso_keys.size());
+//         for (size_t i = 0; i < iso_keys.size(); ++i) {
+//             std::string iso_key = nb::cast<std::string>(iso_keys[i]);
+//             Datetime64 dt(iso_key);
+//             keys_->push_back(dt);
+//             (*index_)[dt] = static_cast<int>(i);
+//         }
+//         mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
+//     }
 
-    std::shared_ptr<mask_t> mask() const override {
-        return mask_;
-    }
+//     // // TODO Keys should return an iterator
+//     // std::vector<Datetime64> keys() const {
+//     //     std::vector<Datetime64> result;
+//     //     result.reserve(length());
+//     //     for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
+//     //         result.push_back((*keys_)[i]);
+//     //     }
+//     //     return result;
+//     // }
+
     
-    Eigen::Index length() const {
-        return mask_->length();
-    }
-};
+//     Datetime64 operator[](Eigen::Index idx) const {
+//         if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
+//             throw std::out_of_range("Index out of range");
+//         }
+//         return (*keys_)[combine_slice_with_index(*mask_, idx)];
+//     }
+    
+//     index_t operator[](const Datetime64& key) const {
+//         return index_->at(key);
+//     }
+
+//     // friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
+//     //     auto k = dtIndex.keys();
+//     //     os << "[";
+//     //     for (size_t i = 0; i < k.size(); ++i) {
+//     //         os << k[i].seconds();  
+//     //         if (i < k.size() - 1) {
+//     //             os << ", ";
+//     //         }
+//     //     }
+//     //     os << "]";
+//     //     return os;
+//     // }
+
+//     std::shared_ptr<mask_t> mask() const override {
+//         return mask_;
+//     }
+    
+//     Eigen::Index length() const {
+//         return mask_->length();
+//     }
+// };
 
 
 template <typename Derived>
@@ -734,27 +748,27 @@ NB_MODULE(cloth, m) {
     //     });  
 
     
-    nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
-        .def(nb::init<std::vector<std::string>>())  
-        .def(nb::init<nb::list>())  
-        .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
-            return self[idx];
-        }, nb::is_operator())  
-        .def("__getitem__", [](DateTimeIndex& self, const Datetime64& key) {
-            return self[key];
-        }, nb::is_operator())  
-        .def("keys", &DateTimeIndex::keys)  
-        .def("__repr__", [](const DateTimeIndex& self) {
-            std::ostringstream oss;
-            oss << "DateTimeIndex(";
-            auto keys = self.keys();
-            for (size_t i = 0; i < keys.size(); ++i) {
-                oss << keys[i].seconds();
-                if (i < keys.size() - 1) oss << ", ";
-            }
-            oss << ")";
-            return oss.str();
-        });  
+    // nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
+    //     .def(nb::init<std::vector<std::string>>())  
+    //     .def(nb::init<nb::list>())  
+    //     .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
+    //         return self[idx];
+    //     }, nb::is_operator())  
+    //     .def("__getitem__", [](DateTimeIndex& self, const Datetime64& key) {
+    //         return self[key];
+    //     }, nb::is_operator())  
+    //     .def("keys", &DateTimeIndex::keys)  
+    //     .def("__repr__", [](const DateTimeIndex& self) {
+    //         std::ostringstream oss;
+    //         oss << "DateTimeIndex(";
+    //         auto keys = self.keys();
+    //         for (size_t i = 0; i < keys.size(); ++i) {
+    //             oss << keys[i].seconds();
+    //             if (i < keys.size() - 1) oss << ", ";
+    //         }
+    //         oss << ")";
+    //         return oss.str();
+    //     });  
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {
