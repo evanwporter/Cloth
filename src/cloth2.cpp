@@ -27,14 +27,9 @@
 #include "../include/dt.h"
 #include "../include/slice.h"
 #include "../include/digitize.h"
-#include "../include/index.h"
 
 
-#ifndef NB_T
-#define NB_T
 namespace nb = nanobind;
-#endif
-
 using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
 #ifndef INDEX_T
@@ -44,7 +39,200 @@ using index_t = Eigen::Index;
 
 using mask_t = slice<index_t>;
 
+class Index_ {
+public:
+    virtual ~Index_() = default;
+
+    virtual std::shared_ptr<mask_t> mask() const = 0;
+
+    index_t length() const {
+        return mask()->length();
+    }
+
+    virtual index_t operator[] (const Datetime64& index) const = 0;
+
+    virtual index_t operator[](const std::string& key) const = 0;
+
+    virtual std::vector<std::string> keys() const = 0;
+
+};
+
+class StringIndex : public Index_ {
+private:
+    std::shared_ptr<mask_t> mask_;
+
+public:
+    std::shared_ptr<robin_hood::unordered_map<std::string, int>> index_;
+    std::shared_ptr<std::vector<std::string>> keys_;
+
+public:
+    StringIndex(std::shared_ptr<robin_hood::unordered_map<std::string, int>> index, std::shared_ptr<std::vector<std::string>> keys)
+        : index_(std::move(index)), keys_(std::move(keys)), 
+          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
+
+    StringIndex(std::shared_ptr<StringIndex> other, std::shared_ptr<mask_t> mask)
+        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+
+    StringIndex(std::shared_ptr<Index_> base, std::shared_ptr<mask_t> mask) {
+    // Handle the initialization
+    }
+
+    explicit StringIndex(std::vector<std::string> keys)
+        : keys_(std::make_shared<std::vector<std::string>>(std::move(keys))),
+          index_(std::make_shared<robin_hood::unordered_map<std::string, int>>()) {
+        for (size_t i = 0; i < this->keys_->size(); ++i) {
+            (*index_)[(*this->keys_)[i]] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
+    }
+
+    explicit StringIndex(nb::list keys)
+        : keys_(std::make_shared<std::vector<std::string>>()), 
+          index_(std::make_shared<robin_hood::unordered_map<std::string, int>>()) {
+        keys_->reserve(keys.size());
+        for (size_t i = 0; i < keys.size(); ++i) {
+            keys_->push_back(std::move(nb::cast<std::string>(keys[i])));
+            (*index_)[keys_->back()] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
+    }
+
+    std::vector<std::string> keys() const {
+        std::vector<std::string> result;
+        result.reserve(length());
+        for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
+            result.push_back((*keys_)[i]);
+        }
+        return result;
+    }
+
+    std::string operator[](Eigen::Index idx) const {
+        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
+            throw std::out_of_range("Index out of range");
+        }
+        return (*keys_)[combine_slice_with_index(*mask_, idx)];
+    }
+
+    index_t operator[](const std::string& key) const override {
+        return index_->at(key);
+    }
+
+    index_t operator[](const Datetime64& index) const override {
+        throw std::runtime_error("StringIndex does not support Datetime64 indexing.");
+    }
+
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const StringIndex& strIndex) {
+        auto k = strIndex.keys();
+        os << "[";
+        for (size_t i = 0; i < k.size(); ++i) {
+            os << k[i];
+            if (i < k.size() - 1) {
+                os << ", ";
+            }
+        }
+        os << "]";
+        return os;
+    }
+};
+
 using ColumnIndex = StringIndex;
+
+class DateTimeIndex : public Index_ {
+private:
+    std::shared_ptr<mask_t> mask_;
+
+public:
+    std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index_;
+    std::shared_ptr<std::vector<Datetime64>> keys_;
+    
+    DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<Datetime64, int>> index, std::shared_ptr<std::vector<Datetime64>> keys)
+        : index_(std::move(index)), keys_(std::move(keys)), 
+          mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
+
+    
+    DateTimeIndex(std::shared_ptr<DateTimeIndex> other, std::shared_ptr<mask_t> mask)
+        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+
+    
+    explicit DateTimeIndex(std::vector<std::string> iso_keys)
+        : keys_(std::make_shared<std::vector<Datetime64>>()),
+          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+
+        for (size_t i = 0; i < iso_keys.size(); ++i) {
+            Datetime64 dt(iso_keys[i]);
+            keys_->push_back(dt);
+            (*index_)[dt] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
+    }
+
+    
+    explicit DateTimeIndex(nb::list iso_keys)
+        : keys_(std::make_shared<std::vector<Datetime64>>()), 
+          index_(std::make_shared<robin_hood::unordered_map<Datetime64, int>>()) {
+
+        keys_->reserve(iso_keys.size());
+        for (size_t i = 0; i < iso_keys.size(); ++i) {
+            std::string iso_key = nb::cast<std::string>(iso_keys[i]);
+            Datetime64 dt(iso_key);
+            keys_->push_back(dt);
+            (*index_)[dt] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(keys_->size()), 1);
+    }
+
+    // // TODO Keys should return an iterator
+    // std::vector<std::string> keys() const {
+    //     std::vector<Datetime64> result;
+    //     result.reserve(length());
+    //     for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
+    //         result.push_back((*keys_)[i]);
+    //     }
+    //     return result;
+    // }
+
+    
+    Datetime64 operator[](Eigen::Index idx) const {
+        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
+            throw std::out_of_range("Index out of range");
+        }
+        return (*keys_)[combine_slice_with_index(*mask_, idx)];
+    }
+    
+    index_t operator[](const Datetime64& key) const {
+        return index_->at(key);
+    }
+
+    index_t operator[](const std::string& index) const override {
+        throw std::runtime_error("DateTimeIndex does not support String indexing.");
+    }
+
+    // friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
+    //     auto k = dtIndex.keys();
+    //     os << "[";
+    //     for (size_t i = 0; i < k.size(); ++i) {
+    //         os << k[i].seconds();  
+    //         if (i < k.size() - 1) {
+    //             os << ", ";
+    //         }
+    //     }
+    //     os << "]";
+    //     return os;
+    // }
+
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
+    
+    Eigen::Index length() const {
+        return mask_->length();
+    }
+};
+
 
 template <typename Derived>
 class IlocBase {
@@ -150,24 +338,24 @@ public:
           
     Series(const Series& other, std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-        index_(other.index_->clone(mask)),
+        index_(std::make_shared<StringIndex>(other.index_, mask)),
         name_(other.name_),
         mask_(std::move(mask)) {}
 
 
-    Series(std::shared_ptr<Eigen::VectorXd> values, std::shared_ptr<Index_> index)
+    Series(std::shared_ptr<Eigen::VectorXd> values, std::shared_ptr<StringIndex> index)
         : values_(std::move(values)), 
           index_(std::move(index)) 
     {
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1); 
     }
 
-    Series(const Eigen::VectorXd &values, std::shared_ptr<StringIndex> index)
-        : values_(std::make_shared<Eigen::VectorXd>(values)), 
-          index_(std::move(index)) 
-    {
-        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1); 
-    }
+    // Series(const Eigen::VectorXd &values, std::shared_ptr<StringIndex> index)
+    //     : values_(std::make_shared<Eigen::VectorXd>(values)), 
+    //       index_(std::move(index)) 
+    // {
+    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1); 
+    // }
 
     Series(nb::ndarray<double> values, nb::list index)
         : values_(std::make_shared<Eigen::VectorXd>(Eigen::Map<const Eigen::VectorXd>(values.data(), values.size()))),
@@ -204,10 +392,6 @@ public:
 
     double max() const {
         return values().maxCoeff();
-    }
-
-    std::vector<std::string> get_index() const {
-        return index_->keys();
     }
 
     const Eigen::Map<const Eigen::VectorXd> values() const {
@@ -280,29 +464,35 @@ public:
                 double series_value = (*series.values_)(series.mask_->start + i * series.mask_->step);
                 os << index_value << "    " << series_value << "\n";
             }
+
             if (!series.name_.empty()) {
                 os << "Name: " << series.name_ << "\n";
             }
+
         } catch (const std::exception &e) {
             os << "Error during stream output: " << e.what();
         }
+
         return os;
     }
+
+
 };
 
 class DataFrame : public Frame<DataFrame> {
 public:
     std::shared_ptr<MatrixXdRowMajor> values_;
-    std::shared_ptr<Index_> index_;
+    std::shared_ptr<StringIndex> index_;
     std::shared_ptr<ColumnIndex> columns_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
     
 public:
     DataFrame(const DataFrame& other, std::shared_ptr<slice<Eigen::Index>> mask)
         : values_(other.values_),
-          index_(other.index_->clone(mask)),
-          columns_(other.columns_),
-          mask_(std::move(mask)) {}
+        index_(std::make_shared<StringIndex>(other.index_, mask)),
+        columns_(other.columns_),
+        mask_(std::move(mask)) {}
+
 
     DataFrame(std::shared_ptr<MatrixXdRowMajor> values, std::shared_ptr<StringIndex> index, std::shared_ptr<ColumnIndex> columns)
         : values_(std::move(values)), 
@@ -316,6 +506,7 @@ public:
         Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
         Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
         values_ = std::make_shared<MatrixXdRowMajor>(Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols));
+    
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
 
@@ -391,7 +582,7 @@ public:
         );
     }
 
-    const Index_& index() const {
+    const StringIndex& index() const {
         return *index_;
     }
 
@@ -600,23 +791,23 @@ NB_MODULE(cloth, m) {
             return self[nbSlice];
         }, nb::is_operator());
 
-    nb::class_<Series>(m, "Series")
-        .def(nb::init<Eigen::VectorXd, std::shared_ptr<StringIndex>>())
-        .def(nb::init<nb::ndarray<double>, nb::list>())
-        .def("__repr__", &Series::to_string)
-        .def("sum", &Series::sum)
-        .def("mean", &Series::mean)
-        .def("min", &Series::min)
-        .def("max", &Series::max)
-        .def_prop_ro("values", &Series::values)
-        .def("length", &Series::length)
-        .def_prop_ro("mask", [](const Series &series) {
-            return *series.mask_;
-        })
-        .def_prop_ro("iloc", &Series::iloc)
-        .def_prop_ro("loc", &Series::loc)
-        .def("head", &Series::head)
-        .def("tail", &Series::tail);
+    // nb::class_<Series>(m, "Series")
+    //     .def(nb::init<Eigen::VectorXd, std::shared_ptr<StringIndex>>())
+    //     .def(nb::init<nb::ndarray<double>, nb::list>())
+    //     .def("__repr__", &Series::to_string)
+    //     .def("sum", &Series::sum)
+    //     .def("mean", &Series::mean)
+    //     .def("min", &Series::min)
+    //     .def("max", &Series::max)
+    //     .def_prop_ro("values", &Series::values)
+    //     .def("length", &Series::length)
+    //     .def_prop_ro("mask", [](const Series &series) {
+    //         return *series.mask_;
+    //     })
+    //     .def_prop_ro("iloc", &Series::iloc)
+    //     .def_prop_ro("loc", &Series::loc)
+    //     .def("head", &Series::head)
+    //     .def("tail", &Series::tail);
 
     nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
         .def("__getitem__", [](DataFrame::IlocProxy& self, Eigen::Index idx) {

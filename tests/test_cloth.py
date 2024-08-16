@@ -147,7 +147,7 @@ def test_dataframe_loc():
 
 def test_datetime64():
     dt = cloth.Datetime64("2023-08-14T15:23:45")
-    assert dt.seconds() == 1692024225 
+    assert dt.seconds() == 1692026625 
     assert dt.days() > 0 
 
     delta = cloth.Timedelta64(3600)
