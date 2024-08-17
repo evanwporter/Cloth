@@ -531,35 +531,49 @@ NB_MODULE(cloth, m) {
     m.attr("ColumnIndex") = m.attr("StringIndex");
 
     nb::class_<datetime>(m, "datetime")
-        // .def(nb::init<dtime_t>())  
-        .def(nb::init<const std::string&>())  
-        .def("__add__", &datetime::operator+)    
-        .def("seconds", &datetime::seconds)  
-        .def("minutes", &datetime::minutes)  
-        .def("hours", &datetime::hours)  
-        .def("days", &datetime::days)  
-        .def("weeks", &datetime::weeks)  
-        .def("years", &datetime::years)  
-        .def("months", &datetime::months)  
-        .def("__repr__", [](const datetime& self) {
+        .def(nb::init<dtime_t>())
+        .def(nb::init<const std::string&>())
+        .def("__add__", &datetime::operator+, nb::is_operator())
+        .def("__sub__", [](const datetime &a, const timedelta &b) {
+            return a - b;
+        }, nb::is_operator())
+        .def("__sub__", [](const datetime &a, const datetime &b) {
+            return a - b;
+        }, nb::is_operator())
+        .def("floor", &datetime::floor)
+        .def("ceil", &datetime::ceil)
+        .def("seconds", &datetime::seconds)
+        .def("minutes", &datetime::minutes)
+        .def("hours", &datetime::hours)
+        .def("days", &datetime::days)
+        .def("weeks", &datetime::weeks)
+        .def("years", &datetime::years)
+        .def("months", &datetime::months)
+        .def("__eq__", &datetime::operator==, nb::is_operator())
+        .def("__ne__", &datetime::operator!=, nb::is_operator())
+        .def("__lt__", &datetime::operator<, nb::is_operator())
+        .def("__le__", &datetime::operator<=, nb::is_operator())
+        .def("__gt__", &datetime::operator>, nb::is_operator())
+        .def("__ge__", &datetime::operator>=, nb::is_operator())
+        .def("__str__", [](const datetime &dt) {
             std::ostringstream oss;
-            oss << "datetime(" << self.seconds() << ")";
+            oss << "Datetime(" << dt.seconds() << " seconds since epoch)";
             return oss.str();
-        }); 
+        })
+        .def("data", &datetime::data);
 
     nb::class_<timedelta>(m, "timedelta")
-        .def(nb::init<dtime_t>(), "Constructor with time units", nb::arg("units") = 0)
-        .def(nb::init<const std::string&>(), "Constructor from string", nb::arg("str"))
-        
-        .def("__add__", &timedelta::operator+, nb::arg("other"))
-        .def("__sub__", &timedelta::operator-, nb::arg("other"))
-        .def("__mul__", &timedelta::operator*, nb::arg("other"))
-
-        .def("__repr__", [](const timedelta &td) {
-            std::stringstream ss;
-            ss << "timedelta(" << td.data_ << ")";
-            return ss.str();
-        });
+        .def(nb::init<dtime_t>(), nb::arg("units") = 0)
+        .def(nb::init<const std::string&>())
+        .def("__add__", &timedelta::operator+, nb::is_operator())
+        .def("__sub__", &timedelta::operator-, nb::is_operator())
+        .def("__mul__", &timedelta::operator*, nb::is_operator())
+        .def("__str__", [](const timedelta &td) {
+            std::ostringstream oss;
+            oss << td.data() << " units";
+            return oss.str();
+        })
+        .def("data", &timedelta::data);
     
     // nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
     //     .def(nb::init<std::vector<std::string>>())  
@@ -570,18 +584,18 @@ NB_MODULE(cloth, m) {
     //     .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
     //         return self[key];
     //     }, nb::is_operator())  
-    //     .def("keys", &DateTimeIndex::keys)  
-    //     .def("__repr__", [](const DateTimeIndex& self) {
-    //         std::ostringstream oss;
-    //         oss << "DateTimeIndex(";
-    //         auto keys = self.keys();
-    //         for (size_t i = 0; i < keys.size(); ++i) {
-    //             oss << keys[i].seconds();
-    //             if (i < keys.size() - 1) oss << ", ";
-    //         }
-    //         oss << ")";
-    //         return oss.str();
-    //     });  
+    //     .def("keys", &DateTimeIndex::keys);  
+        // .def("__repr__", [](const DateTimeIndex& self) {
+        //     std::ostringstream oss;
+        //     oss << "DateTimeIndex(";
+        //     auto keys = self.keys();
+        //     for (size_t i = 0; i < keys.size(); ++i) {
+        //         oss << keys[i].seconds();
+        //         if (i < keys.size() - 1) oss << ", ";
+        //     }
+        //     oss << ")";
+        //     return oss.str();
+        // });  
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {
