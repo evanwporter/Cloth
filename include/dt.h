@@ -111,15 +111,14 @@ dtime_t iso_to_time_units(const std::string& iso_time);
 
 class timedelta {
 public:
-    dtime_t data_;
-
-    // Default constructor
-    timedelta(dtime_t units = 0) : data_(units) {}
+    timedelta(dtime_t data = 0) : data_(data) {}
 
     // String constructor
     timedelta(const std::string& str) {
         data_ = parse_string(str);
     }
+
+    dtime_t data() const { return data_; }
 
     timedelta operator+(const timedelta &other) const {
         return timedelta(data_ + other.data_);
@@ -134,6 +133,8 @@ public:
     }
 
 private:
+    dtime_t data_;
+
     static dtime_t parse_string(const std::string& str) {
         if (str.empty()) {
             throw std::invalid_argument("Invalid input string");
@@ -187,21 +188,23 @@ public:
     // ISO 8601 formatted string constructor
     datetime(const std::string& iso_time) : data_(iso_to_time_units(iso_time)) {}
 
+    dtime_t data() const { return data_; }
+
     datetime operator+(const timedelta &delta) const;
     datetime operator-(const timedelta &delta) const;
     timedelta operator-(const datetime &other) const;
 
     // Floor the datetime to the nearest given timedelta
     datetime floor(const timedelta &delta) const {
-        dtime_t floored_data = (data_ / delta.data_) * delta.data_;
+        dtime_t floored_data = (data_ / delta.data()) * delta.data();
         return datetime(floored_data);
     }
 
     // Ceil the datetime to the nearest given timedelta
     datetime ceil(const timedelta &delta) const {
-        dtime_t floored_data = (data_ / delta.data_) * delta.data_;
-        if (data_ % delta.data_ != 0) {
-            floored_data += delta.data_;
+        dtime_t floored_data = (data_ / delta.data()) * delta.data();
+        if (data_ % delta.data() != 0) {
+            floored_data += delta.data();
         }
         return datetime(floored_data);
     }
@@ -262,40 +265,77 @@ public:
     }
 
     bool operator==(const datetime& other) const {
-        return data_ == other.data_;
+        return data_ == other.data();
     }
 
     bool operator!=(const datetime& other) const {
-        return data_ != other.data_;
+        return data_ != other.data();
     }
 
     bool operator<(const datetime& other) const {
-        return data_ < other.data_;
+        return data_ < other.data();
     }
 
     bool operator<=(const datetime& other) const {
-        return data_ <= other.data_;
+        return data_ <= other.data();
     }
 
     bool operator>(const datetime& other) const {
-        return data_ > other.data_;
+        return data_ > other.data();
     }
 
     bool operator>=(const datetime& other) const {
-        return data_ >= other.data_;
+        return data_ >= other.data();
+    }
+
+    std::string to_iso() const {
+
+        time_t total_seconds = seconds();
+
+        std::tm t;
+        _gmtime64_s(&t, &total_seconds);  // Use gmtime to get UTC time
+
+        std::ostringstream oss;
+        oss << std::put_time(&t, "%Y-%m-%dT%H:%M:%S");
+
+        #ifdef USE_MILLISECONDS
+        dtime_t remaining_units = data_ % UNITS_PER_SECOND;
+        int milliseconds = static_cast<int>(remaining_units * 1000 / UNITS_PER_SECOND);
+        if (milliseconds > 0) {
+            oss << "." << std::setw(3) << std::setfill('0') << milliseconds;
+        }
+        #endif
+
+        #ifdef USE_MICROSECONDS
+        dtime_t remaining_units = data_ % UNITS_PER_SECOND;
+        int microseconds = static_cast<int>(remaining_units * 1000000 / UNITS_PER_SECOND);
+        if (microseconds > 0) {
+            oss << "." << std::setw(6) << std::setfill('0') << microseconds;
+        }
+        #endif
+
+        #ifdef USE_NANOSECONDS
+        dtime_t remaining_units = data_ % UNITS_PER_SECOND;
+        int nanoseconds = static_cast<int>(remaining_units * 1000000000 / UNITS_PER_SECOND);
+        if (nanoseconds > 0) {
+            oss << "." << std::setw(9) << std::setfill('0') << nanoseconds;
+        }
+        #endif
+
+        return oss.str();
     }
 };
 
 inline datetime datetime::operator+(const timedelta &delta) const {
-    return datetime(data_ + delta.data_);
+    return datetime(data_ + delta.data());
 }
 
 inline datetime datetime::operator-(const timedelta &delta) const {
-    return datetime(data_ - delta.data_);
+    return datetime(data_ - delta.data());
 }
 
 inline timedelta datetime::operator-(const datetime &other) const {
-    return timedelta(data_ - other.data_);
+    return timedelta(data_ - other.data());
 };
 
 dtime_t iso_to_time_units(const std::string& iso_time) {
@@ -307,33 +347,14 @@ dtime_t iso_to_time_units(const std::string& iso_time) {
         throw std::invalid_argument("Invalid ISO format");
     }
 
-    dtime_t total_units = 0;
+    // Assume the input time is in GMT/UTC
+    t.tm_isdst = -1;
 
-    for (int32_t year = 1970; year < t.tm_year + 1900; ++year) {
-        total_units += TimeConstants::days_in_year(year) * UNITS_PER_DAY;
-    }
+    // Convert the tm structure to time_t which is the number of seconds since the Unix epoch
+    time_t epochTime = _mkgmtime(&t);
 
-    for (int16_t month = 0; month < t.tm_mon; ++month) {
-        if (TimeConstants::is_leap_year(t.tm_year + 1900)) {
-            total_units += TimeConstants::UNITS_PER_MONTH_LEAP(month);
-        } else {
-            total_units += TimeConstants::UNITS_PER_MONTH_COMMON(month);
-        }
-    }
-
-    total_units += (t.tm_mday - 1) * UNITS_PER_DAY;
-
-    #ifdef USE_HOURS
-    total_units += t.tm_hour * UNITS_PER_HOUR;
-    #endif
-
-    #ifdef USE_MINUTES
-    total_units += t.tm_min * UNITS_PER_MINUTE;
-    #endif
-
-    #ifdef USE_SECONDS
-    total_units += t.tm_sec * UNITS_PER_SECOND;
-    #endif
+    // Depending on the defined time unit (USE_SECONDS, USE_MILLISECONDS, etc.)
+    dtime_t total_units = epochTime * UNITS_PER_SECOND;
 
     #ifdef USE_MILLISECONDS
     size_t dot_pos = iso_time.find('.');
@@ -344,17 +365,17 @@ dtime_t iso_to_time_units(const std::string& iso_time) {
     #endif
 
     #ifdef USE_MICROSECONDS
-    size_t micro_pos = iso_time.find_first_of("0123456789", dot_pos + 4);
-    if (micro_pos != std::string::npos && iso_time.length() > micro_pos + 2) {
-        int microseconds = std::stoi(iso_time.substr(micro_pos, 3));
+    size_t dot_pos = iso_time.find('.');
+    if (dot_pos != std::string::npos && iso_time.length() > dot_pos + 6) {
+        int microseconds = std::stoi(iso_time.substr(dot_pos + 4, 3));
         total_units += microseconds * (UNITS_PER_SECOND / 1000000);
     }
     #endif
 
     #ifdef USE_NANOSECONDS
-    size_t nano_pos = iso_time.find_first_of("0123456789", micro_pos + 4);
-    if (nano_pos != std::string::npos && iso_time.length() > nano_pos + 2) {
-        int nanoseconds = std::stoi(iso_time.substr(nano_pos, 3));
+    size_t dot_pos = iso_time.find('.');
+    if (dot_pos != std::string::npos && iso_time.length() > dot_pos + 9) {
+        int nanoseconds = std::stoi(iso_time.substr(dot_pos + 7, 3));
         total_units += nanoseconds * (UNITS_PER_SECOND / 1000000000);
     }
     #endif

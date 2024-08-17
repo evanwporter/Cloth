@@ -144,7 +144,7 @@ public:
 class Series : public Frame<Series> {
 public:
     std::shared_ptr<Eigen::VectorXd> values_;
-    std::shared_ptr<Index_> index_;
+    std::shared_ptr<Index_> index_; // Dynamic polymorphism
     std::string name_;
     std::shared_ptr<slice<Eigen::Index>> mask_;
           
