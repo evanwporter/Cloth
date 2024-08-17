@@ -293,6 +293,8 @@ public:
         time_t total_seconds = seconds();
 
         std::tm t;
+
+        // TODO: Allow other systems since this only works for windows
         _gmtime64_s(&t, &total_seconds);  // Use gmtime to get UTC time
 
         std::ostringstream oss;

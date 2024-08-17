@@ -575,27 +575,27 @@ NB_MODULE(cloth, m) {
         })
         .def("data", &timedelta::data);
     
-    // nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
-    //     .def(nb::init<std::vector<std::string>>())  
-    //     .def(nb::init<nb::list>())  
-    //     .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
-    //         return self[idx];
-    //     }, nb::is_operator())  
-    //     .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
-    //         return self[key];
-    //     }, nb::is_operator())  
-    //     .def("keys", &DateTimeIndex::keys);  
-        // .def("__repr__", [](const DateTimeIndex& self) {
-        //     std::ostringstream oss;
-        //     oss << "DateTimeIndex(";
-        //     auto keys = self.keys();
-        //     for (size_t i = 0; i < keys.size(); ++i) {
-        //         oss << keys[i].seconds();
-        //         if (i < keys.size() - 1) oss << ", ";
-        //     }
-        //     oss << ")";
-        //     return oss.str();
-        // });  
+    nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
+        .def(nb::init<std::vector<std::string>>())  
+        .def(nb::init<nb::list>())  
+        .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
+            return self[idx];
+        }, nb::is_operator())  
+        .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
+            return self[key];
+        }, nb::is_operator())  
+        .def("keys", &DateTimeIndex::keys)  
+        .def("__repr__", [](const DateTimeIndex& self) {
+            std::ostringstream oss;
+            oss << "DateTimeIndex(";
+            auto keys = self.keys();
+            for (size_t i = 0; i < keys.size(); ++i) {
+                oss << keys[i];
+                if (i < keys.size() - 1) oss << ", ";
+            }
+            oss << ")";
+            return oss.str();
+        });  
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {

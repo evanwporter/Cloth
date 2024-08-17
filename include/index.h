@@ -146,8 +146,8 @@ public:
           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
 
     
-    DateTimeIndex(std::shared_ptr<DateTimeIndex> other, std::shared_ptr<mask_t> mask)
-        : index_(other->index_), keys_(other->keys_), mask_(std::move(mask)) {}
+    DateTimeIndex(const DateTimeIndex& other, std::shared_ptr<mask_t> mask)
+        : index_(other.index_), keys_(other.keys_), mask_(std::move(mask)) {}
 
     
     explicit DateTimeIndex(std::vector<std::string> iso_keys)
@@ -198,6 +198,15 @@ public:
     index_t operator[](const datetime& key) const override {
         return index_->at(key);
     }
+
+    index_t operator[](const std::string &key) const override {
+        throw std::runtime_error("DateTimeIndex does not support string indexing.");
+    }
+
+    std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const override {
+        return std::make_shared<DateTimeIndex>(*this, mask);
+    }
+
 
     friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
         auto k = dtIndex.keys();
