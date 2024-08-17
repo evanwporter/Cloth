@@ -116,6 +116,15 @@ public:
 
 template <typename Derived>
 class Frame {
+protected:
+    bool is_datetime(const nb::ndarray<>& array) const {
+        nb::handle dtype = array.dtype();        
+        if (nb::module_::import_("numpy").attr("datetime64")().get_type() == dtype) {
+            return true;
+        }
+        return false;
+    }
+ 
 public:
     virtual ~Frame() = default;
     Frame() = default;
@@ -262,6 +271,11 @@ public:
         using LocBase<Series>::operator[];
 
         double operator[](const std::string& key) const {
+            int idx = parent_.index_->operator[](key);
+            return parent_.iloc()[idx];
+        }
+
+        double operator[](const datetime& key) const {
             int idx = parent_.index_->operator[](key);
             return parent_.iloc()[idx];
         }

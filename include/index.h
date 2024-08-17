@@ -46,6 +46,7 @@ public:
 
     virtual index_t operator[](const datetime& index) const = 0;
     virtual index_t operator[](const std::string& key) const = 0;
+    virtual index_t operator[](const index_t& index) const = 0;
     virtual std::vector<std::string> keys() const = 0;
     virtual std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const = 0;
 
@@ -100,15 +101,19 @@ public:
         return result;
     }
 
-    std::string operator[](index_t idx) const {
-        if (idx < 0 || idx >= static_cast<index_t>(keys_->size())) {
-            throw std::out_of_range("Index out of range");
-        }
-        return (*keys_)[combine_slice_with_index(*mask_, idx)];
-    }
+    // std::string operator[](index_t idx) const {
+    //     if (idx < 0 || idx >= static_cast<index_t>(keys_->size())) {
+    //         throw std::out_of_range("Index out of range");
+    //     }
+    //     return (*keys_)[combine_slice_with_index(*mask_, idx)];
+    // }
 
     index_t operator[](const datetime& index) const override {
         throw std::runtime_error("StringIndex does not support datetime indexing.");
+    }
+
+    index_t operator[](const index_t& index) const override {
+        throw std::runtime_error("StringIndex does not support integer indexing.");
     }
 
     index_t operator[](const std::string& key) const {
@@ -161,7 +166,6 @@ public:
         }
         mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
     }
-
     
     explicit DateTimeIndex(nb::list iso_keys)
         : keys_(std::make_shared<std::vector<datetime>>()), 
@@ -188,19 +192,23 @@ public:
     }
 
     
-    datetime operator[](Eigen::Index idx) const {
-        if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
-            throw std::out_of_range("Index out of range");
-        }
-        return (*keys_)[combine_slice_with_index(*mask_, idx)];
-    }
+    // datetime operator[](Eigen::Index idx) const {
+    //     if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
+    //         throw std::out_of_range("Index out of range");
+    //     }
+    //     return (*keys_)[combine_slice_with_index(*mask_, idx)];
+    // }
     
     index_t operator[](const datetime& key) const override {
         return index_->at(key);
     }
 
     index_t operator[](const std::string &key) const override {
-        throw std::runtime_error("DateTimeIndex does not support string indexing.");
+        return this->operator[](datetime(key));
+    }
+
+    index_t operator[](const index_t &key) const override {
+        throw std::runtime_error("DateTimeIndex does not support integer indexing.");
     }
 
     std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const override {
@@ -223,6 +231,52 @@ public:
 
     std::shared_ptr<mask_t> mask() const override {
         return mask_;
+    }
+};
+
+class RangeIndex : public Index_ {
+private:
+    std::shared_ptr<mask_t> mask_;
+
+public:
+    explicit RangeIndex(std::shared_ptr<mask_t> mask)
+        : mask_(std::move(mask)) {}
+
+    RangeIndex(index_t start, index_t stop, index_t step = 1)
+        : mask_(std::make_shared<mask_t>(start, stop, step)) {}
+
+    std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const override {
+        return std::make_shared<RangeIndex>(mask);
+    }
+
+    index_t operator[](const index_t& index) const override {
+        return combine_slice_with_index(*mask_, index);
+    }
+
+    index_t operator[](const datetime& index) const override {
+        throw std::runtime_error("RangeIndex does not support datetime indexing.");
+    }
+
+    index_t operator[](const std::string& key) const override {
+        return (*this)[std::stoi(key)];
+    }
+
+    std::vector<std::string> keys() const {
+        std::vector<std::string> result;
+        result.reserve(length());
+        for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
+            result.push_back(std::to_string(i));
+        }
+        return result;
+    }
+
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const RangeIndex& rangeIndex) {
+        os << *(rangeIndex.mask_);
+        return os;
     }
 };
 
