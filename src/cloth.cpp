@@ -529,20 +529,38 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("length", &slice<Eigen::Index>::length)
         .def("__repr__", &slice<Eigen::Index>::to_string);
 
-    nb::class_<Index_>(m, "Index_");
+    nb::class_<Index_>(m, "Index_")
+        .def("length", &Index_::length);
+        // .def("mask", &Index_::mask);
 
     nb::class_<StringIndex, Index_>(m, "StringIndex")
         .def(nb::init<std::vector<std::string>>()) 
-        .def("keys", &StringIndex::keys)
-        .def_rw("index", &StringIndex::keys_)
         .def("__getitem__", [](StringIndex& self, std::string& key) {
             return self[key];
         }, nb::is_operator())
         .def_prop_ro("mask", [](const DataFrame &df) {
             return *df.mask();
-        });
+        })
+        .def("__repr__", &StringIndex::to_string)
+        .def_prop_ro("index", &StringIndex::keys);
 
     m.attr("ColumnIndex") = m.attr("StringIndex");
+
+    nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
+        .def(nb::init<std::vector<std::string>>())  
+        .def(nb::init<nb::list>())    
+        .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
+            return self[key];
+        }, nb::is_operator())  
+        .def("__repr__", &DateTimeIndex::to_string)
+        .def_prop_ro("index", &DateTimeIndex::keys);
+
+    nb::class_<RangeIndex, Index_>(m, "RangeIndex") 
+        .def("__getitem__", [](RangeIndex& self, const index_t& key) {
+            return self[key];
+        }, nb::is_operator())  
+        .def("__repr__", &RangeIndex::to_string)
+        .def_prop_ro("index", &RangeIndex::keys);
 
     nb::class_<datetime>(m, "datetime")
         .def(nb::init<dtime_t>())
@@ -588,28 +606,6 @@ NB_MODULE(cloth, m) {
             return oss.str();
         })
         .def("data", &timedelta::data);
-    
-    nb::class_<DateTimeIndex, Index_>(m, "DateTimeIndex")
-        .def(nb::init<std::vector<std::string>>())  
-        .def(nb::init<nb::list>())  
-        .def("__getitem__", [](DateTimeIndex& self, Eigen::Index idx) {
-            return self[idx];
-        }, nb::is_operator())  
-        .def("__getitem__", [](DateTimeIndex& self, const datetime& key) {
-            return self[key];
-        }, nb::is_operator())  
-        .def("keys", &DateTimeIndex::keys)  
-        .def("__repr__", [](const DateTimeIndex& self) {
-            std::ostringstream oss;
-            oss << "DateTimeIndex(";
-            auto keys = self.keys();
-            for (size_t i = 0; i < keys.size(); ++i) {
-                oss << keys[i];
-                if (i < keys.size() - 1) oss << ", ";
-            }
-            oss << ")";
-            return oss.str();
-        });  
 
     nb::class_<Series::IlocProxy>(m, "SeriesIlocProxy")
         .def("__getitem__", [](Series::IlocProxy& self, Eigen::Index idx) {

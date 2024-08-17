@@ -124,16 +124,20 @@ public:
         return mask_;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const StringIndex& strIndex) {
-        auto k = strIndex.keys();
-        os << "[";
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << "StringIndex(";
+        std::vector<std::string> k = keys();
         for (size_t i = 0; i < k.size(); ++i) {
-            os << k[i];
-            if (i < k.size() - 1) {
-                os << ", ";
-            }
+            oss << k[i];
+            if (i < k.size() - 1) oss << ", ";
         }
-        os << "]";
+        oss << ")";
+        return oss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const StringIndex& other) {
+        os << other.to_string();
         return os;
     }
 };
@@ -215,17 +219,20 @@ public:
         return std::make_shared<DateTimeIndex>(*this, mask);
     }
 
-
-    friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& dtIndex) {
-        auto k = dtIndex.keys();
-        os << "[";
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << "DateTimeIndex(";
+        std::vector<std::string> k = keys();
         for (size_t i = 0; i < k.size(); ++i) {
-            os << k[i];  
-            if (i < k.size() - 1) {
-                os << ", ";
-            }
+            oss << k[i];
+            if (i < k.size() - 1) oss << ", ";
         }
-        os << "]";
+        oss << ")";
+        return oss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const DateTimeIndex& other) {
+        os << other.to_string();
         return os;
     }
 
@@ -274,8 +281,14 @@ public:
         return mask_;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const RangeIndex& rangeIndex) {
-        os << *(rangeIndex.mask_);
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << "RangeIndex(" << mask_->start << ", " << mask_->stop << ", " << mask_->step << ")";
+        return oss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const RangeIndex& other) {
+        os << other.to_string();
         return os;
     }
 };

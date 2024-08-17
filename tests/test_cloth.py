@@ -40,7 +40,7 @@ def test_slice_zero_step():
 def test_string_index():
     keys = ["a", "b", "c", "d"]
     obj_index = cloth.StringIndex(keys)
-    assert obj_index.keys() == keys
+    assert obj_index.index == keys
     assert obj_index["a"] == 0
     assert obj_index["d"] == 3
     # assert str(obj_index) == "[a, b, c, d]"
@@ -165,12 +165,9 @@ def test_datetime_index():
     iso_dates = ["2023-08-14T15:23:45", "2023-08-15T16:24:50", "2023-08-16T17:25:55"]
     dt_index = cloth.DateTimeIndex(iso_dates)
 
-    assert dt_index.keys()[0] == '2023-08-14T15:23:45'
-    assert dt_index.keys()[1] == '2023-08-15T16:24:50'
-    assert dt_index.keys()[2] == '2023-08-16T17:25:55'
-
-    dt0 = dt_index[0]
-    assert dt0 == cloth.datetime("2023-08-14T15:23:45")
+    assert dt_index.index[0] == '2023-08-14T15:23:45'
+    assert dt_index.index[1] == '2023-08-15T16:24:50'
+    assert dt_index.index[2] == '2023-08-16T17:25:55'
 
     dt1 = cloth.datetime("2023-08-15T16:24:50")
     assert dt_index[dt1] == 1  
