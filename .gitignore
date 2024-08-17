@@ -14,4 +14,7 @@ build
 /.pytest_cache
 /src/nanobind
 
+/tests/animal.cpp
+/test/__pycache__
+
 /CMakeFiles
