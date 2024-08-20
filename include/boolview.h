@@ -6,6 +6,11 @@
 #include <vector>
 #include <algorithm>
 
+#ifndef MATRIX_RM_T
+#define MATRIX_RM_T
+using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+#endif
+
 class BoolView {
 public:
     
@@ -15,8 +20,8 @@ public:
     BoolView(std::vector<bool> mask, int ones_count)
         : mask_(std::move(mask)), ones_count_(ones_count) {}
 
-    Eigen::MatrixXd apply(const Eigen::MatrixXd& data) const {
-        Eigen::MatrixXd filtered_data(ones_count_, data.cols());
+    MatrixXdRowMajor apply(const MatrixXdRowMajor& data) const {
+        MatrixXdRowMajor filtered_data(ones_count_, data.cols());
         int index = 0;
         for (int i = 0; i < data.rows(); ++i) {
             if (mask_[i]) {
@@ -35,6 +40,19 @@ public:
             }
         }
         return filtered_data;
+    }
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << "[";
+        for (size_t i = 0; i < mask_.size(); ++i) {
+            oss << (mask_[i] ? "True" : "False");
+            if (i < mask_.size() - 1) {
+                oss << ", ";
+            }
+        }
+        oss << "]";
+        return oss.str();
     }
 };
 

@@ -36,7 +36,10 @@
 namespace nb = nanobind;
 #endif
 
+#ifndef MATRIX_RM_T
+#define MATRIX_RM_T
 using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+#endif
 
 #ifndef INDEX_T
 #define INDEX_T
@@ -390,6 +393,12 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
 
+    DataFrame(std::shared_ptr<MatrixXdRowMajor> values, std::shared_ptr<Index_> index, std::shared_ptr<ColumnIndex> columns)
+        : values_(std::move(values)), 
+          index_(std::move(index)), 
+          columns_(std::move(columns)), 
+          mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
+
     // DataFrame(nb::ndarray<> values, nb::object index, nb::object columns) {
     //     // Handle values
     //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
@@ -505,6 +514,12 @@ public:
         int colIndex = columns_->index_->at(colName);        
         auto colValues = std::make_shared<Eigen::VectorXd>(values().col(colIndex));
         return Series(colValues, index_);
+    }
+
+    DataFrame operator[](const BoolView& view) const {
+        Eigen::MatrixXd filtered_values = view.apply(*values_);
+        std::shared_ptr<Index_> filtered_index = index_->apply(view);
+        return DataFrame(std::make_shared<MatrixXdRowMajor>(filtered_values), filtered_index, columns_);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const DataFrame& df) {
@@ -766,8 +781,15 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("values", &DataFrame::values)
         .def_prop_ro("iloc", &DataFrame::iloc)
         .def_prop_ro("loc", &DataFrame::loc)
-        .def("__getitem__", &DataFrame::operator[], nb::is_operator())
-        .def("__getattr__", &DataFrame::operator[], nb::is_operator())
+        .def("__getitem__", [](DataFrame& self, std::string& other) {
+            return self[other];
+        }, nb::is_operator())
+        .def("__getitem__", [](const DataFrame &self, const BoolView &view) {
+            return self[view];
+        }, nb::is_operator())
+        .def("__getattr__", [](DataFrame& self, std::string& other) {
+            return self[other];
+        }, nb::is_operator())        
         .def("length", &DataFrame::length)
         .def("rows", &DataFrame::rows)
         .def("cols", &DataFrame::cols)
@@ -781,9 +803,8 @@ NB_MODULE(cloth, m) {
         .def("sum", &DataFrame::sum)
         .def_prop_ro("columns", &DataFrame::columns);
 
-    nb::class_<BoolView>(m, "BoolView");
-
-
+    nb::class_<BoolView>(m, "BoolView")
+        .def("__repr__", &BoolView::to_string);
 
     // nb::class_<Resampler<Series>>(m, "SeriesResampler")
     //     .def(nb::init<std::shared_ptr<Series>, timedelta>())

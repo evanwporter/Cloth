@@ -194,5 +194,15 @@ def test_series_conditional_lt():
     assert np.all(np.equal(filtered_series.values, [1, 2]))
     assert filtered_series.index.index == ["a", "b"]
 
+def test_dataframe_conditional_gt():
+    values = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
+    index = ["row1", "row2", "row3", "row4"]
+    columns = ["col1", "col2"]
+    df = cloth.DataFrame(values, index, columns)
+    fdf = df[df.col1 > 4]
+
+    assert np.all(np.equal(fdf.values, np.array([[5,6], [7,8]])))
+    assert fdf.index.index == ["row3","row4"]
+
 if __name__ == "__main__":
     pytest.main()
