@@ -28,6 +28,7 @@
 #include "../include/slice.h"
 #include "../include/digitize.h"
 #include "../include/index.h"
+#include "../include/boolview.h"
 
 
 #ifndef NB_T
@@ -185,6 +186,32 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
     }
 
+    // Series(nb::ndarray<double> values, nb::object index, nb::object name = nb::none()) {
+    //     // Handle values
+    //     Eigen::Index size = static_cast<Eigen::Index>(values.size());
+    //     values_ = std::make_shared<Eigen::VectorXd>(Eigen::Map<const Eigen::VectorXd>(values.data(), size));
+
+    //     // Handle index
+    //     if (index.is_none()) {
+    //         index_ = std::make_shared<RangeIndex>(0, size, 1);
+    //     } else if (nb::isinstance<nb::list>(index)) {
+    //         index_ = std::make_shared<StringIndex>(index);
+    //     } else if (nb::isinstance<nb::ndarray<std::string>>(index)) {
+    //         index_ = std::make_shared<StringIndex>(index);
+    //     } else {
+    //         throw std::invalid_argument("Invalid type for index");
+    //     }
+
+    //     // Handle name
+    //     if (name.is_none()) {
+    //         name_ = "";
+    //     } else {
+    //         name_ = nb::cast<std::string>(name);
+    //     }
+
+    //     mask_ = index_->mask();
+    // }
+
     std::shared_ptr<slice<Eigen::Index>> mask() const override {
         return mask_;
     }
@@ -285,6 +312,41 @@ public:
         return LocProxy(*this);
     }
 
+    BoolView operator>(double threshold) const {
+        std::vector<bool> mask(values_->size(), false);
+        int ones_count = 0;
+        for (int i = 0; i < values_->size(); ++i) {
+            if ((*values_)(i) > threshold) {
+                mask[i] = true;
+                ++ones_count;
+            }
+        }
+        return BoolView(mask, ones_count);
+    }
+
+    BoolView operator<(double threshold) const {
+        std::vector<bool> mask(values_->size(), false);
+        int ones_count = 0;
+        for (int i = 0; i < values_->size(); ++i) {
+            if ((*values_)(i) < threshold) {
+                mask[i] = true;
+                ++ones_count;
+            }
+        }
+        return BoolView(mask, ones_count);
+    }
+
+    Series operator[](const BoolView& view) const {
+        Eigen::VectorXd filtered_values(view.ones_count_);
+        int index = 0;
+        for (int i = 0; i < values_->size(); ++i) {
+            if (view.mask_[i]) {
+                filtered_values[index++] = (*values_)(i);
+            }
+        }
+        return Series(std::make_shared<Eigen::VectorXd>(filtered_values), index_);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Series& series) {
         try {
             Eigen::Index len = series.length();
@@ -332,6 +394,37 @@ public:
         values_ = std::make_shared<MatrixXdRowMajor>(Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols));
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
     }
+
+    // DataFrame(nb::ndarray<> values, nb::object index, nb::object columns) {
+    //     // Handle values
+    //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
+    //     Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
+    //     values_ = std::make_shared<MatrixXdRowMajor>(Eigen::Map<MatrixXdRowMajor>(static_cast<double*>(values.data()), rows, cols));
+
+    //     // Handle index
+    //     if (index.is_none()) {
+    //         index_ = std::make_shared<RangeIndex>(0, rows, 1);
+    //     } else if (nb::isinstance<nb::list>(index)) {
+    //         index_ = std::make_shared<StringIndex>(nb::cast<nb::list>(index));
+    //     } else if (nb::isinstance<nb::ndarray<std::string>>(index)) {
+    //         index_ = std::make_shared<StringIndex>(index);
+    //     } else {
+    //         throw std::invalid_argument("Invalid type for index");
+    //     }
+
+    //     // Handle columns
+    //     if (columns.is_none()) {
+    //         columns_ = std::make_shared<ColumnIndex>(std::make_shared<RangeIndex>(0, cols, 1));
+    //     } else if (nb::isinstance<nb::list>(columns)) {
+    //         columns_ = std::make_shared<StringIndex>(nb::cast<nb::list>(columns));
+    //     } else if (nb::isinstance<nb::ndarray<std::string>>(columns)) {
+    //         columns_ = std::make_shared<StringIndex>(columns);
+    //     } else {
+    //         throw std::invalid_argument("Invalid type for columns");
+    //     }
+
+    //     mask_ = index_->mask();
+    // }
 
     std::shared_ptr<mask_t> mask() const override {
         return mask_;
@@ -515,7 +608,6 @@ private:
         bins_ = digitize(datetime_index.keys(), bins);
     }
 };
-
 
 NB_MODULE(cloth, m) {
     m.def("read_csv", &read_csv);

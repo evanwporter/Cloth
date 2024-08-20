@@ -47,4 +47,7 @@
 * ~~Create Parent Class (Frame) for DataFrame and Series~~
 * Index::keys() should return a iterator
 * Create Resampler bindings
-* 
+* Integrate decimal
+* Create TimeSeries DataFrame w/ Decimal (specific for money)
+* Add conditional indexing via View class
+    * Applied via where function

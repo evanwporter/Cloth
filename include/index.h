@@ -195,7 +195,6 @@ public:
         return result;
     }
 
-    
     // datetime operator[](Eigen::Index idx) const {
     //     if (idx < 0 || idx >= static_cast<Eigen::Index>(keys_->size())) {
     //         throw std::out_of_range("Index out of range");
@@ -269,11 +268,11 @@ public:
     }
 
     std::vector<std::string> keys() const {
-        std::vector<std::string> result;
-        result.reserve(length());
-        for (int i = mask_->start; i < mask_->stop; i += mask_->step) {
-            result.push_back(std::to_string(i));
-        }
+        std::vector<std::string> result({
+            std::to_string(mask_->start), 
+            std::to_string(mask_->stop), 
+            std::to_string(mask_->step)
+        });
         return result;
     }
 

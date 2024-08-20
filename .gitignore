@@ -14,6 +14,8 @@ build
 /.pytest_cache
 /src/nanobind
 
+/.benchmarks
+
 /tests/animal.cpp
 /test/__pycache__
 
