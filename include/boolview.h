@@ -1,3 +1,6 @@
+#ifndef BOOLVIEW_T
+#define BOOLVIEW_T
+
 #include <Eigen/Dense>
 #include <iostream>
 #include <vector>
@@ -22,4 +25,17 @@ public:
         }
         return filtered_data;
     }
+
+    Eigen::VectorXd apply(const Eigen::VectorXd& data) const {
+        Eigen::VectorXd filtered_data(ones_count_);
+        int index = 0;
+        for (int i = 0; i < data.size(); ++i) {
+            if (mask_[i]) {
+                filtered_data[index++] = data(i);
+            }
+        }
+        return filtered_data;
+    }
 };
+
+#endif

@@ -15,6 +15,7 @@
 #include "../lib/robinhood.h"
 #include "../include/dt.h"
 #include "../include/slice.h"
+#include "../include/boolview.h"
 
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
@@ -49,7 +50,7 @@ public:
     virtual index_t operator[](const index_t& index) const = 0;
     virtual std::vector<std::string> keys() const = 0;
     virtual std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const = 0;
-
+    virtual std::shared_ptr<Index_> apply(const BoolView& view) const = 0;
 };
 
 class StringIndex : public Index_ {
@@ -124,6 +125,17 @@ public:
         return mask_;
     }
 
+    std::shared_ptr<Index_> apply(const BoolView& view) const override {
+        std::vector<std::string> filtered_keys;
+        filtered_keys.reserve(view.ones_count_);
+        for (int i = 0; i < keys_->size(); ++i) {
+            if (view.mask_[i]) {
+                filtered_keys.push_back((*keys_)[i]);
+            }
+        }
+        return std::make_shared<StringIndex>(filtered_keys);
+    }
+
     std::string to_string() const {
         std::ostringstream oss;
         oss << "StringIndex(";
@@ -153,12 +165,19 @@ public:
     DateTimeIndex(std::shared_ptr<robin_hood::unordered_map<datetime, int>> index, std::shared_ptr<std::vector<datetime>> keys)
         : index_(std::move(index)), keys_(std::move(keys)), 
           mask_(std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1)) {}
-
     
     DateTimeIndex(const DateTimeIndex& other, std::shared_ptr<mask_t> mask)
         : index_(other.index_), keys_(other.keys_), mask_(std::move(mask)) {}
 
-    
+    explicit DateTimeIndex(std::vector<datetime> datetime_keys)
+        : keys_(std::make_shared<std::vector<datetime>>(std::move(datetime_keys))),
+          index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
+        for (size_t i = 0; i < keys_->size(); ++i) {
+            (*index_)[(*keys_)[i]] = static_cast<int>(i);
+        }
+        mask_ = std::make_shared<mask_t>(0, static_cast<int>(this->keys_->size()), 1);
+    }
+
     explicit DateTimeIndex(std::vector<std::string> iso_keys)
         : keys_(std::make_shared<std::vector<datetime>>()),
           index_(std::make_shared<robin_hood::unordered_map<datetime, int>>()) {
@@ -216,6 +235,17 @@ public:
 
     std::shared_ptr<Index_> clone(const std::shared_ptr<mask_t> mask) const override {
         return std::make_shared<DateTimeIndex>(*this, mask);
+    }
+
+    std::shared_ptr<Index_> apply(const BoolView& view) const override {
+        std::vector<datetime> filtered_keys;
+        filtered_keys.reserve(view.ones_count_);
+        for (int i = 0; i < keys_->size(); ++i) {
+            if (view.mask_[i]) {
+                filtered_keys.push_back((*keys_)[i]);
+            }
+        }
+        return std::make_shared<DateTimeIndex>(filtered_keys);
     }
 
     std::string to_string() const {
@@ -284,6 +314,10 @@ public:
         std::ostringstream oss;
         oss << "RangeIndex(" << mask_->start << ", " << mask_->stop << ", " << mask_->step << ")";
         return oss.str();
+    }
+
+    std::shared_ptr<Index_> apply(const BoolView& view) const override {
+        return std::make_shared<RangeIndex>(0, view.ones_count_, 1);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const RangeIndex& other) {

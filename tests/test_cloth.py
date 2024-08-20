@@ -172,5 +172,27 @@ def test_datetime_index():
     dt1 = cloth.datetime("2023-08-15T16:24:50")
     assert dt_index[dt1] == 1  
 
+def test_series_conditional_gt():
+    values = np.array([1.0, 2.0, 3.0, 4.0])
+    keys = ["a", "b", "c", "d"]
+    series = cloth.Series(values, keys)
+
+    filtered_series = series[series > 2.0]
+
+    assert filtered_series.length() == 2
+    assert np.all(np.equal(filtered_series.values, [3, 4]))
+    assert filtered_series.index.index == ["c", "d"]
+
+def test_series_conditional_lt():
+    values = np.array([1.0, 2.0, 3.0, 4.0])
+    keys = ["a", "b", "c", "d"]
+    series = cloth.Series(values, keys)
+
+    filtered_series = series[series < 3.0]
+
+    assert filtered_series.length() == 2
+    assert np.all(np.equal(filtered_series.values, [1, 2]))
+    assert filtered_series.index.index == ["a", "b"]
+
 if __name__ == "__main__":
     pytest.main()

@@ -337,14 +337,9 @@ public:
     }
 
     Series operator[](const BoolView& view) const {
-        Eigen::VectorXd filtered_values(view.ones_count_);
-        int index = 0;
-        for (int i = 0; i < values_->size(); ++i) {
-            if (view.mask_[i]) {
-                filtered_values[index++] = (*values_)(i);
-            }
-        }
-        return Series(std::make_shared<Eigen::VectorXd>(filtered_values), index_);
+        Eigen::VectorXd filtered_values = view.apply(*values_);
+        std::shared_ptr<Index_> filtered_index = index_->apply(view);
+        return Series(std::make_shared<Eigen::VectorXd>(filtered_values), filtered_index);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Series& series) {
@@ -734,7 +729,17 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("iloc", &Series::iloc)
         .def_prop_ro("loc", &Series::loc)
         .def("head", &Series::head)
-        .def("tail", &Series::tail);
+        .def("tail", &Series::tail)
+        .def_prop_ro("index", &Series::index)
+        .def("__gt__", [](const Series &self, double other) {
+            return self > other;
+        }, nb::is_operator())
+        .def("__lt__", [](const Series &self, double other) {
+            return self < other;
+        }, nb::is_operator())
+        .def("__getitem__", [](const Series &self, const BoolView &view) {
+            return self[view];
+        }, nb::is_operator());
 
     nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
         .def("__getitem__", [](DataFrame::IlocProxy& self, Eigen::Index idx) {
@@ -775,6 +780,10 @@ NB_MODULE(cloth, m) {
         .def_prop_ro("index", &DataFrame::index)
         .def("sum", &DataFrame::sum)
         .def_prop_ro("columns", &DataFrame::columns);
+
+    nb::class_<BoolView>(m, "BoolView");
+
+
 
     // nb::class_<Resampler<Series>>(m, "SeriesResampler")
     //     .def(nb::init<std::shared_ptr<Series>, timedelta>())
