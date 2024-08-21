@@ -18,18 +18,22 @@ All commands within Cloth are implemented and binded in such a way that is promi
 
 * `cloth.Frame.loc[string]`
 * `cloth.Frame.loc[slice]`
+* `cloth.Frame.loc[boolean array]`
 * `cloth.Frame.loc[cloth.slice]`
 
 # Integer Indexing
 * `cloth.Frame.iloc[int]`
 * `cloth.Frame.iloc[slice]`
-* `cloth.Frame.iloc[boolean array]`
 * `cloth.Frame.iloc[cloth.slice]`
 
 # Column Indexing
 * `cloth.DataFrame[string]`
 
 # DateTime
-* `cloth.datetime(string)`
+* `cloth.datetime(ISO string)`
+
+# Timedelta
+* `cloth.timedelta(interval)`
+
 
 

@@ -11,7 +11,7 @@ https://stackoverflow.com/questions/59747377/custom-scalar-type-in-eigen
 #ifndef DECIMAL_EIGEN_H
 #define DECIMAL_EIGEN_H
 
-#include "lib/decimal.h"
+#include "../lib/decimal.h"
 #include <Eigen/Core>
 
 namespace Eigen {

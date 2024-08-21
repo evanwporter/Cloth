@@ -1,13 +1,13 @@
-/*
-Small file for demonstrating and testing deceig.h
-*/
-#include <iostream>
-#include "lib/deceig.h"
+// Small file for demonstrating and testing deceig.h
+
+#define CATCH_CONFIG_MAIN
+#include "../lib/catch.hpp"
+#include "../include/deceig.h"
 #include <Eigen/Dense>
 
 using Decimal = dec::decimal<2>;
 
-int main() {
+TEST_CASE("Matrix and Vector operations using Decimal type with Eigen", "[Eigen][Decimal]") {
     Eigen::Matrix<Decimal, 2, 2> mat;
     mat(0, 0) = Decimal(1.1);
     mat(0, 1) = Decimal(2.2);
@@ -18,14 +18,19 @@ int main() {
     vec(0) = Decimal("5.5");
     vec(1) = Decimal("6.6");
 
+    Eigen::Matrix<Decimal, 2, 1> expected_result;
+    expected_result(0) = Decimal("20.57");  // 1.1 * 5.5 + 2.2 * 6.6
+    expected_result(1) = Decimal("47.19");  // 3.3 * 5.5 + 4.4 * 6.6
+
     Eigen::Matrix<Decimal, 2, 1> result = mat * vec;
 
-    auto result2 = mat.sum();
+    REQUIRE(result(0) == expected_result(0));
+    REQUIRE(result(1) == expected_result(1));
 
-    std::cout << "Matrix:\n" << mat << "\n";
-    std::cout << "Vector:\n" << vec << "\n";
-    std::cout << "Result:\n" << result << "\n";
-    std::cout << "Result2:\n" << result2 << "\n";
+    Decimal expected_sum = Decimal("11.00"); // 1.1 + 2.2 + 3.3 + 4.4
 
-    return 0;
+    Decimal result2 = mat.sum();
+
+    REQUIRE(result2 == expected_sum);
 }
+
