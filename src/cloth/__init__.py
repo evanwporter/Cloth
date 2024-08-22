@@ -7,5 +7,8 @@ from .cloth import (
     read_csv, 
     timedelta, 
     datetime, 
-    DateTimeIndex
+    DateTimeIndex,
+    TimeSeries,
+    TimeFrame,
+    decimal
 )

@@ -665,11 +665,19 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
     }
 
-    // TimeSeries(nb::ndarray<Decimal> values, nb::list index)
-    //     : values_(std::make_shared<VectorDecimal>(Eigen::Map<const VectorDecimal>(values.data(), values.size()))),
-    //       index_(std::make_shared<DateTimeIndex>(index)) {
-    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
-    // }
+    TimeSeries(nb::ndarray<double> values, nb::list index)
+        : values_(std::make_shared<Eigen::Matrix<Decimal, Eigen::Dynamic, 1>>(values.size())),
+          index_(std::make_shared<DateTimeIndex>(index)) {
+
+        double* values_data = values.data();
+        for (Eigen::Index i = 0; i < values.size(); ++i) {
+            (*values_)(i) = Decimal(values_data[i]);
+        }
+
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
+    }
+
+
 
     std::shared_ptr<slice<Eigen::Index>> mask() const override {
         return mask_;
@@ -806,14 +814,25 @@ public:
           columns_(std::move(columns)),
           mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
 
-    // TimeFrame(nb::ndarray<Decimal> values, nb::list index, nb::list columns)
-    //     : index_(std::make_shared<DateTimeIndex>(index)),
-    //       columns_(std::make_shared<ColumnIndex>(columns)) {
-    //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
-    //     Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
-    //     values_ = std::make_shared<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(Eigen::Map<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(values.data(), rows, cols));
-    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
-    // }
+    TimeFrame(nb::ndarray<double> values, nb::list index, nb::list columns)
+        : index_(std::make_shared<DateTimeIndex>(index)),
+          columns_(std::make_shared<ColumnIndex>(columns)) {
+
+        Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
+        Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
+
+        values_ = std::make_shared<MatrixDecimalRowMajor>(rows, cols);
+
+        double* values_data = values.data();
+        for (Eigen::Index i = 0; i < rows; ++i) {
+            for (Eigen::Index j = 0; j < cols; ++j) {
+                (*values_)(i, j) = Decimal(values_data[i * cols + j]);
+            }
+        }
+
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
+    }
+
 
     std::shared_ptr<mask_t> mask() const override {
         return mask_;
@@ -1139,6 +1158,72 @@ NB_MODULE(cloth, m) {
 
     nb::class_<BoolView>(m, "BoolView")
         .def("__repr__", &BoolView::to_string);
+
+    nb::class_<Decimal>(m, "decimal")
+        .def(nb::init<double>())
+        .def("__add__", [](const Decimal& a, const Decimal& b) { return a + b; }, nb::is_operator())
+        .def("__sub__", [](const Decimal& a, const Decimal& b) { return a - b; }, nb::is_operator())
+        .def("__mul__", [](const Decimal& a, const Decimal& b) { return a * b; }, nb::is_operator())
+        .def("__truediv__", [](const Decimal& a, const Decimal& b) { return a / b; }, nb::is_operator())
+        .def("__str__", [](const Decimal &dec) {
+            std::ostringstream oss;
+            oss << dec;
+            return oss.str();
+        });
+
+    nb::class_<TimeSeries>(m, "TimeSeries")
+        .def(nb::init<nb::ndarray<double>, nb::list>())
+        .def("__repr__", &TimeSeries::to_string)
+        .def("sum", &TimeSeries::sum)
+        .def("mean", &TimeSeries::mean)
+        .def("min", &TimeSeries::min)
+        .def("max", &TimeSeries::max)
+        .def_prop_ro("values", &TimeSeries::values)
+        .def("length", &TimeSeries::length)
+        .def_prop_ro("mask", [](const TimeSeries &series) {
+            return *series.mask_;
+        })
+        .def_prop_ro("iloc", &TimeSeries::iloc)
+        .def_prop_ro("loc", &TimeSeries::loc)
+        .def("head", &TimeSeries::head)
+        .def("tail", &TimeSeries::tail)
+        .def_prop_ro("index", &TimeSeries::index)
+        // .def("__gt__", [](const TimeSeries &self, Decimal other) {
+        //     return self > other;
+        // }, nb::is_operator())
+        // .def("__lt__", [](const TimeSeries &self, Decimal other) {
+        //     return self < other;
+        // }, nb::is_operator())
+        .def("__getitem__", [](const TimeSeries &self, const BoolView &view) {
+            return self[view];
+        }, nb::is_operator());
+
+    nb::class_<TimeFrame>(m, "TimeFrame")
+        .def(nb::init<nb::ndarray<double>, nb::list, nb::list>())
+        .def("__repr__", &TimeFrame::to_string)
+        .def("sum", &TimeFrame::sum)
+        .def("rows", &TimeFrame::rows)
+        .def("cols", &TimeFrame::cols)
+        .def_prop_ro("values", &TimeFrame::values)
+        .def("length", &TimeFrame::length)
+        .def_prop_ro("mask", [](const TimeFrame &df) {
+            return *df.mask();
+        })
+        .def_prop_ro("iloc", &TimeFrame::iloc)
+        .def_prop_ro("loc", &TimeFrame::loc)
+        .def("head", &TimeFrame::head)
+        .def("tail", &TimeFrame::tail)
+        .def_prop_ro("index", &TimeFrame::index)
+        .def_prop_ro("columns", &TimeFrame::columns)
+        .def("__getitem__", [](TimeFrame& self, std::string& other) {
+            return self[other];
+        }, nb::is_operator())
+        .def("__getitem__", [](const TimeFrame &self, const BoolView &view) {
+            return self[view];
+        }, nb::is_operator())
+        .def("__getattr__", [](TimeFrame& self, std::string& other) {
+            return self[other];
+        }, nb::is_operator());
 
     // nb::class_<Resampler<Series>>(m, "SeriesResampler")
     //     .def(nb::init<std::shared_ptr<Series>, timedelta>())
