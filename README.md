@@ -40,5 +40,8 @@ The biggest advantage to using Cloth as opposed to Pandas, is the `TimeSeries` a
 # Timedelta
 * `cloth.timedelta(interval)`
 
+# Resampling
+* `cloth.frame.resample(timedelta`
+
 
 
