@@ -15,7 +15,7 @@ struct slice {
     slice(T start_, T stop_, sT step_) 
         : start(start_), stop(stop_), step(step_) {
         if (step == 0) throw std::invalid_argument("Step cannot be zero");
-        LOG("Creating slice with start=" << start << ", stop=" << stop << ", step=" << step);
+        // LOG("Creating slice with start=" << start << ", stop=" << stop << ", step=" << step);
     }
 
     slice(T start_, T stop_, sT step_, index_t length) 
@@ -28,7 +28,7 @@ struct slice {
         if (stop < 0) stop += length;
         if (start < 0) start = 0;
         if (stop > length) stop = length;
-        LOG("Normalized slice to start=" << start << ", stop=" << stop << ", step=" << step);
+        // LOG("Normalized slice to start=" << start << ", stop=" << stop << ", step=" << step);
     }
 
     index_t length() const {

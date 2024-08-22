@@ -28,10 +28,10 @@
 #include "../include/read_csv.h"
 #include "../include/dt.h"
 #include "../include/slice.h"
-#include "../include/digitize.h"
 #include "../include/index.h"
 #include "../include/boolview.h"
 #include "../include/deceig.h"
+#include "../include/resampler.h"
 
 
 #ifndef NB_T
@@ -592,60 +592,6 @@ public:
     }
 };
 
-
-
-template <typename FrameType>
-class Resampler {
-private:
-    std::shared_ptr<FrameType> data_;
-    timedelta freq_;
-    std::vector<int> bins_;
-    size_t current_bin_;
-
-public:
-    Resampler(std::shared_ptr<FrameType> data, timedelta freq)
-        : data_(std::move(data)), freq_(freq), current_bin_(0) {
-        resample();
-    }
-
-    // Iterator implementation
-    Resampler& begin() {
-        current_bin_ = 0;
-        return *this;
-    }
-
-    Resampler& end() {
-        current_bin_ = bins_.size() - 1;
-        return *this;
-    }
-
-    bool operator!=(const Resampler& other) const {
-        return current_bin_ != other.current_bin_;
-    }
-
-    void operator++() {
-        if (current_bin_ < bins_.size() - 1) {
-            ++current_bin_;
-        }
-    }
-
-    FrameType operator*() const {
-        return data_->iloc()[slice<int>(bins_[current_bin_], bins_[current_bin_ + 1], 1)];
-    }
-
-private:
-    void resample() {
-        // Dynamic cast throws std::bad_cast if its not a DateTimeIndex. For runtime safety
-        const auto& datetime_index = dynamic_cast<const DateTimeIndex&>(data_->index());
-        slice<datetime, timedelta> bins(
-            datetime_index.keys().front().floor(freq_),
-            datetime_index.keys().back().ceil(freq_),
-            freq_
-        );
-        bins_ = digitize(datetime_index.keys(), bins);
-    }
-};
-
 class TimeSeries : public Frame<TimeSeries> {
 public:
     std::shared_ptr<VectorDecimal> values_;
@@ -1075,7 +1021,7 @@ NB_MODULE(cloth, m) {
         .def(nb::init<dtime_t>(), nb::arg("units") = 0)
         .def(nb::init<const std::string&>())
         .def("__add__", &timedelta::operator+, nb::is_operator())
-        .def("__sub__", &timedelta::operator-, nb::is_operator())
+        // .def("__sub__", &timedelta::operator-, nb::is_operator())
         .def("__mul__", &timedelta::operator*, nb::is_operator())
         .def("__str__", [](const timedelta &td) {
             std::ostringstream oss;
@@ -1214,7 +1160,8 @@ NB_MODULE(cloth, m) {
         }, nb::is_operator())
         .def("__getitem__", [](const TimeSeries &self, const BoolView &view) {
             return self[view];
-        }, nb::is_operator());
+        }, nb::is_operator())
+        .def("resample", &TimeSeries::resample);
 
     nb::class_<TimeFrame>(m, "TimeFrame")
         .def(nb::init<nb::ndarray<double>, nb::list, nb::list>())
@@ -1254,16 +1201,16 @@ NB_MODULE(cloth, m) {
     //         }
     //     });
 
-    // nb::class_<Resampler<DataFrame>>(m, "DataFrameResampler")
-    //     .def(nb::init<std::shared_ptr<DataFrame>, timedelta>())
-    //     .def("__iter__", [](Resampler<DataFrame>& self) -> Resampler<DataFrame>& { return self.begin(); })
-    //     .def("__next__", [](Resampler<DataFrame>& self) -> DataFrame {
-    //         if (self != self.end()) {
-    //             DataFrame result = *self;
-    //             ++self;
-    //             return result;
-    //         } else {
-    //             throw nb::stop_iteration();
-    //         }
-    //     });
+    nb::class_<Resampler<TimeSeries>>(m, "TimeSeriesResampler")
+        .def("__iter__", [](Resampler<TimeSeries>& self) -> Resampler<TimeSeries>& { return self.begin(); })
+        .def("__next__", [](Resampler<TimeSeries>& self) -> TimeSeries {
+            if (self != self.end()) {
+                TimeSeries result = *self;
+                ++self;
+                return result;
+            } else {
+                throw nb::stop_iteration();
+            }
+        })
+        .def("__repr__", &Resampler<TimeSeries>::to_string);
 }

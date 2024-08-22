@@ -113,7 +113,6 @@ class timedelta {
 public:
     timedelta(dtime_t data = 0) : data_(data) {}
 
-    // String constructor
     timedelta(const std::string& str) {
         data_ = parse_string(str);
     }
@@ -130,6 +129,66 @@ public:
 
     timedelta operator*(const index_t &other) const {
         return timedelta(data_ * other);
+    }
+
+    index_t operator/(const timedelta &other) const {
+        if (other.data_ == 0) {
+            throw std::invalid_argument("Cannot divide by zero");
+        }
+        return static_cast<index_t>(data_ / other.data_);
+    }
+
+    timedelta operator-() const {
+        return timedelta(-data_);
+    }
+
+    bool operator==(const int& other) const {
+        return data_ == static_cast<dtime_t>(other);
+    }
+
+    bool operator!=(const int& other) const {
+        return data_ != static_cast<dtime_t>(other);
+    }
+
+    bool operator<(const int& other) const {
+        return data_ < static_cast<dtime_t>(other);
+    }
+
+    bool operator<=(const int& other) const {
+        return data_ <= static_cast<dtime_t>(other);
+    }
+
+    bool operator>(const int& other) const {
+        return data_ > static_cast<dtime_t>(other);
+    }
+
+    bool operator>=(const int& other) const {
+        return data_ >= static_cast<dtime_t>(other);
+    }
+
+    // Comparison operators with timedelta
+    bool operator==(const timedelta& other) const {
+        return data_ == other.data_;
+    }
+
+    bool operator!=(const timedelta& other) const {
+        return data_ != other.data_;
+    }
+
+    bool operator<(const timedelta& other) const {
+        return data_ < other.data_;
+    }
+
+    bool operator<=(const timedelta& other) const {
+        return data_ <= other.data_;
+    }
+
+    bool operator>(const timedelta& other) const {
+        return data_ > other.data_;
+    }
+
+    bool operator>=(const timedelta& other) const {
+        return data_ >= other.data_;
     }
 
 private:
@@ -194,13 +253,13 @@ public:
     datetime operator-(const timedelta &delta) const;
     timedelta operator-(const datetime &other) const;
 
-    // Floor the datetime to the nearest given timedelta
+    // Round down the datetime to the nearest given timedelta
     datetime floor(const timedelta &delta) const {
         dtime_t floored_data = (data_ / delta.data()) * delta.data();
         return datetime(floored_data);
     }
 
-    // Ceil the datetime to the nearest given timedelta
+    // Round up the datetime to the nearest given timedelta
     datetime ceil(const timedelta &delta) const {
         dtime_t floored_data = (data_ / delta.data()) * delta.data();
         if (data_ % delta.data() != 0) {
@@ -286,6 +345,13 @@ public:
 
     bool operator>=(const datetime& other) const {
         return data_ >= other.data();
+    }
+
+    index_t operator/(const timedelta &delta) const {
+        if (delta.data() == 0) {
+            throw std::invalid_argument("Cannot divide by zero timedelta");
+        }
+        return static_cast<index_t>(data_ / delta.data());
     }
 
     std::string to_iso() const {

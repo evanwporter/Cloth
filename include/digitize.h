@@ -3,36 +3,31 @@
 
 #include <vector>
 #include <iostream>
-#include "slice.h"
+#include <memory>
 
-// std::vector<int> digitize(const std::vector<double>& array, const std::vector<double>& bin_edges) {
-//     // O(n+m)
-//     std::vector<int> indices(bin_edges.size(), 0);
-    
-//     size_t j = 0;
+#include "../include/slice.h"
 
-//     for (size_t i = 0; i < bin_edges.size(); ++i) {
-//         while (j < array.size() && array[j] < bin_edges[i]) {
-//             ++j;
-//         }
-//         indices[j];
-//     }
+#ifndef INDEX_T
+#define INDEX_T
+#include <cstddef>
+typedef std::ptrdiff_t index_t;
+#endif
 
-//     return indices;
-// }
+template <typename T = index_t, typename sT = index_t>
+std::vector<index_t> digitize(const std::shared_ptr<std::vector<T>> array, const slice<T, sT>& bin_edges) {
+    std::vector<index_t> indices;
+    indices.reserve(bin_edges.length());
 
-template <typename T=index_t, typename sT=index_t>
-std::vector<int> digitize(const std::vector<T>& array, const slice<T, sT>& bin_edges) {
-    // O(n+m)
-    std::vector<int> indices(bin_edges.length(), 0);
-    
     size_t j = 0;
+    size_t array_size = array->size();
 
     for (size_t i = 0; i < bin_edges.length(); ++i) {
-        while (j < array.size() && array[j] < (bin_edges.start + bin_edges.step * i)) {
+        T current_bin_edge = bin_edges.start + bin_edges.step * i;
+
+        while (j < array_size && array->at(j) < current_bin_edge) {
             ++j;
         }
-        indices[j];
+        indices.push_back(static_cast<index_t>(j));
     }
 
     return indices;
