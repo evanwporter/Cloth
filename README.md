@@ -4,11 +4,11 @@
 
 Cloth is a high performance C++ implementation of the Pandas API.
 
-In exchange for a fraction of the feautures of Pandas, Cloth has a fraction of the execution time and a fraction of the resources of Pandas.
+In exchange for a fraction of the features of Pandas, Cloth has a fraction of the execution time and a fraction of the resources of Pandas.
 
-To obtain such breakneck speeds Cloth is implemented using Eigen to hold the underlying data and Nanobinds for the fast C++ -> Python bindings.
+To obtain such speeds Cloth is implemented using Eigen to hold the underlying data and Nanobinds for the fast C++ -> Python bindings. Note that because the data is stored within Eigen, it must be homogenous. This is akin to the `DataMatrix` in very early versions of Pandas.
 
-All commands within Cloth are implemented and binded in such a way that is promises and idenitcal syntax to Pandas.
+Syntax within Cloth are implemented and binded in such a way that is (nearly) identical  to Pandas. Check out tests/test_cloth.py for an example of how to use Cloth in Python.
 
 # Frames
 * `cloth.Series`

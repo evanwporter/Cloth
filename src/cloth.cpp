@@ -23,12 +23,15 @@
 
 #include <Eigen/Dense>
 #include "../lib/robinhood.h"
+#include "../lib/decimal.h"
+
 #include "../include/read_csv.h"
 #include "../include/dt.h"
 #include "../include/slice.h"
 #include "../include/digitize.h"
 #include "../include/index.h"
 #include "../include/boolview.h"
+#include "../include/deceig.h"
 
 
 #ifndef NB_T
@@ -46,9 +49,31 @@ using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, E
 using index_t = Eigen::Index;
 #endif
 
+#ifndef MASK_T
+#define MASK_T
 using mask_t = slice<index_t>;
+#endif
 
+#ifndef DEC_T
+#define DEC_T
+constexpr int precision_ = 2;
+using Decimal = dec::decimal<precision_>;
+#endif
+
+#ifndef MATRIX_DEC_RM_T
+#define MATRIX_DEC_RM_T
+using MatrixDecimalRowMajor = Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+#endif
+
+#ifndef VECTOR_DEC_RM_T
+#define VECTOR_DEC_RM_T
+using VectorDecimal = Eigen::Vector<Decimal, Eigen::Dynamic>;
+#endif
+
+#ifndef COLUMN_INDEX_T
+#define COLUMN_INDEX_T
 using ColumnIndex = StringIndex;
+#endif
 
 template <typename Derived>
 class IlocBase {
@@ -567,6 +592,8 @@ public:
     }
 };
 
+
+
 template <typename FrameType>
 class Resampler {
 private:
@@ -618,6 +645,313 @@ private:
         bins_ = digitize(datetime_index.keys(), bins);
     }
 };
+
+class TimeSeries : public Frame<TimeSeries> {
+public:
+    std::shared_ptr<VectorDecimal> values_;
+    std::shared_ptr<DateTimeIndex> index_;
+    std::string name_;
+    std::shared_ptr<slice<Eigen::Index>> mask_;
+
+    TimeSeries(const TimeSeries& other, std::shared_ptr<slice<Eigen::Index>> mask)
+        : values_(other.values_),
+          index_(std::static_pointer_cast<DateTimeIndex>(other.index_->clone(mask))),
+          name_(other.name_),
+          mask_(std::move(mask)) {}
+
+    TimeSeries(std::shared_ptr<VectorDecimal> values, std::shared_ptr<Index_> index)
+        : values_(std::move(values)),
+          index_(std::static_pointer_cast<DateTimeIndex>(index)) {
+        mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
+    }
+
+    // TimeSeries(nb::ndarray<Decimal> values, nb::list index)
+    //     : values_(std::make_shared<VectorDecimal>(Eigen::Map<const VectorDecimal>(values.data(), values.size()))),
+    //       index_(std::make_shared<DateTimeIndex>(index)) {
+    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
+    // }
+
+    std::shared_ptr<slice<Eigen::Index>> mask() const override {
+        return mask_;
+    }
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << *this;
+        return oss.str();
+    }
+
+    Eigen::Index size() const {
+        return mask_->length();
+    }
+
+    Decimal sum() const {
+        return values().sum();
+    }
+
+    Decimal mean() const {
+        return values().mean();
+    }
+
+    Decimal min() const {
+        return values().minCoeff();
+    }
+
+    Decimal max() const {
+        return values().maxCoeff();
+    }
+
+    std::vector<std::string> get_index() const {
+        return index_->keys();
+    }
+
+    const Eigen::Map<const VectorDecimal> values() const {
+        return Eigen::Map<const VectorDecimal>(
+            values_->data() + mask_->start, 
+            mask_->length()
+        );
+    }
+
+    const DateTimeIndex& index() const {
+        return *index_;
+    }
+
+    class IlocProxy : public IlocBase<TimeSeries> {
+    private:
+        TimeSeries& parent_;
+
+    public:
+        explicit IlocProxy(TimeSeries& parent_) : parent_(parent_) {}
+
+        TimeSeries& parent() override {
+            return parent_;
+        }
+
+        using IlocBase<TimeSeries>::operator[];
+
+        Decimal operator[](Eigen::Index idx) const {
+            Eigen::Index combined_index = combine_slice_with_index(*parent_.mask_, idx);
+            return (*parent_.values_)(combined_index);
+        }
+    };
+
+    IlocProxy iloc() {
+        return IlocProxy(*this);
+    }
+
+    class LocProxy : public LocBase<TimeSeries> {
+    private:
+        TimeSeries& parent_;
+
+    public:
+        explicit LocProxy(TimeSeries& parent_) : parent_(parent_) {}
+
+        TimeSeries& parent() override {
+            return parent_;
+        }
+
+        using LocBase<TimeSeries>::operator[];
+
+        Decimal operator[](const datetime& key) const {
+            int idx = parent_.index_->operator[](key);
+            return parent_.iloc()[idx];
+        }
+    };
+
+    LocProxy loc() {
+        return LocProxy(*this);
+    }
+
+    TimeSeries operator[](const BoolView& view) const {
+        VectorDecimal filtered_values = view.apply(*values_);
+        std::shared_ptr<DateTimeIndex> filtered_index = std::dynamic_pointer_cast<DateTimeIndex>(index_->apply(view));
+        return TimeSeries(std::make_shared<VectorDecimal>(filtered_values), filtered_index);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const TimeSeries& series) {
+        try {
+            Eigen::Index len = series.length();
+            std::vector<std::string> keys = series.index().keys();
+            for (Eigen::Index i = 0; i < len; ++i) {
+                std::string index_value = keys[i];
+                Decimal series_value = (*series.values_)(series.mask_->start + i * series.mask_->step);
+                os << index_value << "    " << series_value << "\n";
+            }
+            if (!series.name_.empty()) {
+                os << "Name: " << series.name_ << "\n";
+            }
+        } catch (const std::exception &e) {
+            os << "Error during stream output: " << e.what();
+        }
+        return os;
+    }
+};
+
+class TimeFrame : public Frame<TimeFrame> {
+public:
+    std::shared_ptr<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> values_;
+    std::shared_ptr<DateTimeIndex> index_;
+    std::shared_ptr<ColumnIndex> columns_;
+    std::shared_ptr<slice<Eigen::Index>> mask_;
+
+    TimeFrame(const TimeFrame& other, std::shared_ptr<slice<Eigen::Index>> mask)
+        : values_(other.values_),
+          index_(std::static_pointer_cast<DateTimeIndex>(other.index_->clone(mask))),
+          columns_(other.columns_),
+          mask_(std::move(mask)) {}
+
+    TimeFrame(std::shared_ptr<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> values, std::shared_ptr<DateTimeIndex> index, std::shared_ptr<ColumnIndex> columns)
+        : values_(std::move(values)),
+          index_(std::move(index)),
+          columns_(std::move(columns)),
+          mask_(std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1)) {}
+
+    // TimeFrame(nb::ndarray<Decimal> values, nb::list index, nb::list columns)
+    //     : index_(std::make_shared<DateTimeIndex>(index)),
+    //       columns_(std::make_shared<ColumnIndex>(columns)) {
+    //     Eigen::Index rows = static_cast<Eigen::Index>(values.shape(0));
+    //     Eigen::Index cols = static_cast<Eigen::Index>(values.shape(1));
+    //     values_ = std::make_shared<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(Eigen::Map<Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(values.data(), rows, cols));
+    //     mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->rows(), 1);
+    // }
+
+    std::shared_ptr<mask_t> mask() const override {
+        return mask_;
+    }
+
+    class IlocProxy : IlocBase<TimeFrame> {
+    private:
+        TimeFrame& parent_;
+
+    public:
+        explicit IlocProxy(TimeFrame& parent_) : parent_(parent_) {}
+
+        TimeFrame& parent() override {
+            return parent_;
+        }
+
+        using IlocBase<TimeFrame>::operator[];
+
+        TimeSeries operator[](Eigen::Index idx) const {
+            Eigen::Index combined_index = combine_slice_with_index(*parent_.mask_, idx);
+            auto row = std::make_shared<VectorDecimal>(parent_.values_->row(combined_index));
+            return TimeSeries(row, parent_.columns_);
+        }
+    };
+
+    IlocProxy iloc() {
+        return IlocProxy(*this);
+    }
+
+    class LocProxy : public LocBase<TimeFrame> {
+    private:
+        TimeFrame& parent_;
+
+    public:
+        explicit LocProxy(TimeFrame& parent_) : parent_(parent_) {}
+
+        TimeFrame& parent() override {
+            return parent_;
+        }
+
+        using LocBase<TimeFrame>::operator[];
+
+        TimeSeries operator[](const datetime& key) {
+            int idx = parent_.index_->operator[](key);
+            return parent().iloc()[idx];
+        }
+    };
+
+    LocProxy loc() {
+        return LocProxy(*this);
+    }
+
+    Eigen::Index rows() const {
+        return length();
+    }
+
+    Eigen::Index cols() const {
+        return values_->cols();
+    }
+
+    TimeSeries sum() const {
+        VectorDecimal colSums = values().colwise().sum();
+        return TimeSeries(std::make_shared<VectorDecimal>(colSums), columns_);
+    }
+
+    const Eigen::Map<const Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> values() const {
+        return Eigen::Map<const MatrixDecimalRowMajor>(
+            values_->data() + mask_->start * values_->cols(),
+            mask_->length(),
+            values_->cols()
+        );
+    }
+
+    const DateTimeIndex& index() const {
+        return *index_;
+    }
+
+    const StringIndex& columns() const {
+        return *columns_;
+    }
+
+    TimeSeries operator[](const std::string& colName) const {
+        int colIndex = columns_->index_->at(colName);        
+        auto colValues = std::make_shared<VectorDecimal>(values().col(colIndex));
+        return TimeSeries(colValues, index_);
+    }
+
+    TimeFrame operator[](const BoolView& view) const {
+        MatrixDecimalRowMajor filtered_values = view.apply(*values_);
+        std::shared_ptr<DateTimeIndex> filtered_index = std::dynamic_pointer_cast<DateTimeIndex>(index_->apply(view));
+        return TimeFrame(std::make_shared<MatrixDecimalRowMajor>(filtered_values), filtered_index, columns_);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const TimeFrame& df) {
+        auto &values = df.values();
+        const auto& rowNames = df.index_->keys();
+        const auto& colNames = df.columns_->keys();
+
+        std::vector<size_t> colWidths(colNames.size());
+
+        for (size_t i = 0; i < colNames.size(); ++i) {
+            colWidths[i] = colNames[i].length();
+            for (size_t j = 0; j < rowNames.size(); ++j) {
+                std::stringstream temp_ss;
+                temp_ss << values(j, i);
+                colWidths[i] = std::max(colWidths[i], temp_ss.str().length());
+            }
+        }
+
+        size_t rowNameWidth = 0;
+        for (const auto &rowName : rowNames) {
+            rowNameWidth = std::max(rowNameWidth, rowName.length());
+        }
+
+        os << std::setw(rowNameWidth) << " ";
+        for (size_t i = 0; i < colNames.size(); ++i) {
+            os << std::setw(colWidths[i] + 2) << colNames[i];
+        }
+        os << std::endl;
+
+        for (size_t i = 0; i < values.rows(); ++i) {
+            os << std::setw(rowNameWidth) << rowNames[i];
+            for (size_t j = 0; j < values.cols(); ++j) {
+                os << std::setw(colWidths[j] + 2) << values(i, j);
+            }
+            os << std::endl;
+        }
+
+        return os;
+    }
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << *this;
+        return oss.str();
+    }
+};
+
 
 NB_MODULE(cloth, m) {
     m.def("read_csv", &read_csv);
