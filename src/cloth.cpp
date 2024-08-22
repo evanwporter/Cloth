@@ -364,7 +364,7 @@ public:
         return BoolView(mask, ones_count);
     }
 
-    Series operator[](const BoolView& view) const {
+    Series where(const BoolView& view) const {
         Eigen::VectorXd filtered_values = view.apply(*values_);
         std::shared_ptr<Index_> filtered_index = index_->apply(view);
         return Series(std::make_shared<Eigen::VectorXd>(filtered_values), filtered_index);
@@ -541,7 +541,7 @@ public:
         return Series(colValues, index_);
     }
 
-    DataFrame operator[](const BoolView& view) const {
+    DataFrame where(const BoolView& view) const {
         Eigen::MatrixXd filtered_values = view.apply(*values_);
         std::shared_ptr<Index_> filtered_index = index_->apply(view);
         return DataFrame(std::make_shared<MatrixXdRowMajor>(filtered_values), filtered_index, columns_);
@@ -677,7 +677,29 @@ public:
         mask_ = std::make_shared<slice<Eigen::Index>>(0, values_->size(), 1);
     }
 
+    BoolView operator>(const Decimal& threshold) const {
+        std::vector<bool> mask(values_->size(), false);
+        int ones_count = 0;
+        for (int i = 0; i < values_->size(); ++i) {
+            if ((*values_)(i) > threshold) {
+                mask[i] = true;
+                ++ones_count;
+            }
+        }
+        return BoolView(mask, ones_count);
+    }
 
+    BoolView operator<(const Decimal& threshold) const {
+        std::vector<bool> mask(values_->size(), false);
+        int ones_count = 0;
+        for (int i = 0; i < values_->size(); ++i) {
+            if ((*values_)(i) < threshold) {
+                mask[i] = true;
+                ++ones_count;
+            }
+        }
+        return BoolView(mask, ones_count);
+    }
 
     std::shared_ptr<slice<Eigen::Index>> mask() const override {
         return mask_;
@@ -920,7 +942,7 @@ public:
         return TimeSeries(colValues, index_);
     }
 
-    TimeFrame operator[](const BoolView& view) const {
+    TimeFrame where(const BoolView& view) const {
         MatrixDecimalRowMajor filtered_values = view.apply(*values_);
         std::shared_ptr<DateTimeIndex> filtered_index = std::dynamic_pointer_cast<DateTimeIndex>(index_->apply(view));
         return TimeFrame(std::make_shared<MatrixDecimalRowMajor>(filtered_values), filtered_index, columns_);
@@ -1105,9 +1127,7 @@ NB_MODULE(cloth, m) {
         .def("__lt__", [](const Series &self, double other) {
             return self < other;
         }, nb::is_operator())
-        .def("__getitem__", [](const Series &self, const BoolView &view) {
-            return self[view];
-        }, nb::is_operator());
+        .def("where", &Series::where);
 
     nb::class_<DataFrame::IlocProxy>(m, "DataFrameIlocProxy")
         .def("__getitem__", [](DataFrame::IlocProxy& self, Eigen::Index idx) {
@@ -1137,9 +1157,7 @@ NB_MODULE(cloth, m) {
         .def("__getitem__", [](DataFrame& self, std::string& other) {
             return self[other];
         }, nb::is_operator())
-        .def("__getitem__", [](const DataFrame &self, const BoolView &view) {
-            return self[view];
-        }, nb::is_operator())
+        .def("where", &DataFrame::where)
         .def("__getattr__", [](DataFrame& self, std::string& other) {
             return self[other];
         }, nb::is_operator())        
@@ -1188,12 +1206,12 @@ NB_MODULE(cloth, m) {
         .def("head", &TimeSeries::head)
         .def("tail", &TimeSeries::tail)
         .def_prop_ro("index", &TimeSeries::index)
-        // .def("__gt__", [](const TimeSeries &self, Decimal other) {
-        //     return self > other;
-        // }, nb::is_operator())
-        // .def("__lt__", [](const TimeSeries &self, Decimal other) {
-        //     return self < other;
-        // }, nb::is_operator())
+        .def("__gt__", [](const TimeSeries &self, Decimal other) {
+            return self > other;
+        }, nb::is_operator())
+        .def("__lt__", [](const TimeSeries &self, Decimal other) {
+            return self < other;
+        }, nb::is_operator())
         .def("__getitem__", [](const TimeSeries &self, const BoolView &view) {
             return self[view];
         }, nb::is_operator());
@@ -1218,9 +1236,7 @@ NB_MODULE(cloth, m) {
         .def("__getitem__", [](TimeFrame& self, std::string& other) {
             return self[other];
         }, nb::is_operator())
-        .def("__getitem__", [](const TimeFrame &self, const BoolView &view) {
-            return self[view];
-        }, nb::is_operator())
+        .def("where", &TimeFrame::where)
         .def("__getattr__", [](TimeFrame& self, std::string& other) {
             return self[other];
         }, nb::is_operator());
