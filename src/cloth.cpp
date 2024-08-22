@@ -866,6 +866,17 @@ public:
         return TimeSeries(std::make_shared<VectorDecimal>(colSums), columns_);
     }
 
+    // Decimal median() const {
+    //     Eigen::VectorXd sorted_values = values();
+    //     std::sort(sorted_values.data(), sorted_values.data() + sorted_values.size());
+
+    //     if (sorted_values.size() % 2 == 0) {
+    //         return Decimal((sorted_values(sorted_values.size() / 2 - 1) + sorted_values(sorted_values.size() / 2)) / 2);
+    //     } else {
+    //         return Decimal(sorted_values(sorted_values.size() / 2));
+    //     }
+    // }
+
     const Eigen::Map<const Eigen::Matrix<Decimal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> values() const {
         return Eigen::Map<const MatrixDecimalRowMajor>(
             values_->data() + mask_->start * values_->cols(),

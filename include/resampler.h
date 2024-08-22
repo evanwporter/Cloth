@@ -22,10 +22,14 @@ class Resampler {
 private:
     std::shared_ptr<FrameType> frame_;
     timedelta freq_;
-    std::vector<index_t> bins_;
     size_t current_bin_;
+    std::vector<index_t> bins_;
 
 public:
+    std::vector<index_t> bins() {
+        return bins_;
+    }
+
     Resampler(std::shared_ptr<FrameType> data, timedelta freq)
         : frame_(std::move(data)), freq_(freq), current_bin_(0) {
         resample();
@@ -62,6 +66,20 @@ public:
         FrameType current_frame = frame_->iloc()[mask_t(bins_[current_bin_], bins_[current_bin_ + 1], 1)];
         oss << current_frame.to_string();  // Assuming FrameType has a to_string method
         return oss.str();
+    }
+
+    bool has_next() const {
+        return current_bin_ < bins_.size() - 1;
+    }
+
+    FrameType next() {
+        if (has_next()) {
+            FrameType result = *(*this);
+            this->operator++();
+            return result;
+        } else {
+            throw std::out_of_range("End of resampler bins reached");
+        }
     }
 
 private:

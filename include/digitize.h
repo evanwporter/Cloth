@@ -13,6 +13,9 @@
 typedef std::ptrdiff_t index_t;
 #endif
 
+// TODO: Eliminate checks
+//  There's definitely a way to do this, but I wanted the minimum working code, and that's what this is.
+
 template <typename T = index_t, typename sT = index_t>
 std::vector<index_t> digitize(const std::shared_ptr<std::vector<T>> array, const slice<T, sT>& bin_edges) {
     std::vector<index_t> indices;
