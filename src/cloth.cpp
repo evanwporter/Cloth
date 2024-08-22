@@ -1202,15 +1202,17 @@ NB_MODULE(cloth, m) {
     //     });
 
     nb::class_<Resampler<TimeSeries>>(m, "TimeSeriesResampler")
-        .def("__iter__", [](Resampler<TimeSeries>& self) -> Resampler<TimeSeries>& { return self.begin(); })
+        .def("__iter__", [](Resampler<TimeSeries>& self) -> Resampler<TimeSeries>& {
+            return self.begin();  // Ensure __iter__ returns self at the start of iteration
+        })
         .def("__next__", [](Resampler<TimeSeries>& self) -> TimeSeries {
-            if (self != self.end()) {
-                TimeSeries result = *self;
-                ++self;
-                return result;
+            if (self.has_next()) {
+                return self.next();
             } else {
-                throw nb::stop_iteration();
+                throw nb::stop_iteration();  // Raise StopIteration to signal the end
             }
         })
+        .def("bins", &Resampler<TimeSeries>::bins)
         .def("__repr__", &Resampler<TimeSeries>::to_string);
+
 }
