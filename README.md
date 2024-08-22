@@ -18,13 +18,15 @@ Syntax within Cloth are implemented and binded in such a way that is (nearly) id
 
 * `cloth.Frame.loc[string]`
 * `cloth.Frame.loc[slice]`
-* `cloth.Frame.loc[boolean array]`
 * `cloth.Frame.loc[cloth.slice]`
 
 # Integer Indexing
 * `cloth.Frame.iloc[int]`
 * `cloth.Frame.iloc[slice]`
 * `cloth.Frame.iloc[cloth.slice]`
+
+# Boolean Indexing
+* `cloth.Frame.where(boolean array)`
 
 # Column Indexing
 * `cloth.DataFrame[string]`
