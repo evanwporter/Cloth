@@ -10,6 +10,8 @@ To obtain such speeds Cloth is implemented using Eigen to hold the underlying da
 
 Syntax within Cloth are implemented and binded in such a way that is (nearly) identical  to Pandas. Check out tests/test_cloth.py for an example of how to use Cloth in Python.
 
+The biggest advantage to using Cloth as opposed to Pandas, is the `TimeSeries` and `TimeFrame` datatypes. These are specific implementations of the `Series` and `DataFrame` meant for Financial Data over time. Specifically these implementations offer a fast method of performing decimal calculations--without the inaccuracies brought on by floating point numbers (a necessity when dealing with money)--via the [decimal](https://github.com/vpiotr/decimal_for_cpp) datatype.
+
 # Frames
 * `cloth.Series`
 * `cloth.DataFrame`
