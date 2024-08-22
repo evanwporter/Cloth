@@ -27,6 +27,7 @@ Syntax within Cloth are implemented and binded in such a way that is (nearly) id
 
 # Boolean Indexing
 * `cloth.Frame.where(boolean array)`
+  * `boolean array -> cloth.Series > value`
 
 # Column Indexing
 * `cloth.DataFrame[string]`
