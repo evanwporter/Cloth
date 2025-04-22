@@ -1,6 +1,6 @@
 # Cloth
 
-### NOTE: This is the C++ Version. Por the python version see [here](https://github.com/evanwporter/Cloth)
+### NOTE: This is the C++ Version. Por the python/cython version see [here](https://github.com/evanwporter/Cloth)
 
 ![sloth](https://github.com/user-attachments/assets/86148566-91bf-4e42-a5a0-3e7cc6b29335)
 
